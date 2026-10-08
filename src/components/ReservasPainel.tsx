@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import Dashboard from './Dashboard';
 import { useAuth } from '@/src/lib/auth';
 import { db, FUNCAO_ANEXOS, mensagemErro, supabase, type Reserva } from '@/src/lib/supabase';
 
@@ -74,6 +75,22 @@ export default function ReservasPainel() {
   const [fResponsavel, setFResponsavel] = useState('');
   const [ordem, setOrdem] = useState<{ col: string; asc: boolean }>({ col: 'criado_em', asc: false });
   const [detalhe, setDetalhe] = useState<Reserva | null>(null);
+  const [visao, setVisao] = useState<'dashboard' | 'tabela'>('dashboard');
+  const [dataDe, setDataDe] = useState('');
+  const [dataAte, setDataAte] = useState('');
+  const [lotes, setLotes] = useState<{ disponivel: number; reservado: number; bloqueado: number }>({ disponivel: 0, reservado: 0, bloqueado: 0 });
+
+  useEffect(() => {
+    try {
+      const v = localStorage.getItem('reservas.visao');
+      if (v === 'tabela' || v === 'dashboard') setVisao(v);
+    } catch { /* ok */ }
+  }, []);
+
+  function trocarVisao(v: 'dashboard' | 'tabela') {
+    setVisao(v);
+    try { localStorage.setItem('reservas.visao', v); } catch { /* ok */ }
+  }
   const [visiveis, setVisiveis] = useState<string[]>(() => PADRAO.map(([c]) => c));
   const [escolhendo, setEscolhendo] = useState(false);
 
@@ -105,6 +122,14 @@ export default function ReservasPainel() {
 
   useEffect(() => { carregar(); }, [carregar]);
 
+  useEffect(() => {
+    db.from('reservas_lotes').select('status').then(({ data }) => {
+      const c = { disponivel: 0, reservado: 0, bloqueado: 0 };
+      (data || []).forEach((l: { status: keyof typeof c }) => { c[l.status] = (c[l.status] || 0) + 1; });
+      setLotes(c);
+    });
+  }, [reservas]);
+
   const responsaveis = useMemo(
     () => [...new Set(reservas.map(r => String(r.responsavel_reserva || '')).filter(Boolean))].sort(),
     [reservas]
@@ -114,6 +139,8 @@ export default function ReservasPainel() {
     const q = busca.trim().toLowerCase();
     const lista = reservas.filter(r =>
       (!fSituacao || situacaoDe(r) === fSituacao) &&
+      (!dataDe || String(r.criado_em).slice(0, 10) >= dataDe) &&
+      (!dataAte || String(r.criado_em).slice(0, 10) <= dataAte) &&
       (!fResponsavel || r.responsavel_reserva === fResponsavel) &&
       (!q || COLUNAS.some(([c]) => texto(r, c).toLowerCase().includes(q)))
     );
@@ -126,19 +153,9 @@ export default function ReservasPainel() {
       const cmp = !isNaN(na) && !isNaN(nb) ? na - nb : String(va).localeCompare(String(vb), 'pt-BR');
       return asc ? cmp : -cmp;
     });
-  }, [reservas, busca, fSituacao, fResponsavel, ordem]);
+  }, [reservas, busca, fSituacao, fResponsavel, dataDe, dataAte, ordem]);
 
-  const resumo = useMemo(() => {
-    const porSituacao: Record<string, number> = {};
-    const porResponsavel: Record<string, number> = {};
-    filtradas.forEach(r => {
-      porSituacao[situacaoDe(r)] = (porSituacao[situacaoDe(r)] || 0) + 1;
-      const resp = String(r.responsavel_reserva || '—');
-      porResponsavel[resp] = (porResponsavel[resp] || 0) + 1;
-    });
-    const top = Object.entries(porResponsavel).sort((a, b) => b[1] - a[1]).slice(0, 5);
-    return { porSituacao, top };
-  }, [filtradas]);
+
 
   function ordenar(col: string) {
     setOrdem(o => (o.col === col ? { col, asc: !o.asc } : { col, asc: true }));
@@ -204,6 +221,7 @@ export default function ReservasPainel() {
             </div>
           </div>
           <div className="acoes">
+            {visao === 'tabela' && (
             <div className="colunas-wrap">
               <button className="secondary-button" onClick={() => setEscolhendo(v => !v)}>Colunas ({VISIVEIS.length})</button>
               {escolhendo && (
@@ -225,22 +243,10 @@ export default function ReservasPainel() {
                 </div>
               )}
             </div>
+            )}
             <button className="secondary-button" onClick={exportarCsv} disabled={!filtradas.length}>Baixar CSV</button>
             <button className="secondary-button" onClick={exportarPdf} disabled={!filtradas.length}>Baixar PDF</button>
           </div>
-        </div>
-
-        <div className="cards">
-          <div className="card"><span>Reservas</span><strong>{filtradas.length}</strong></div>
-          {SITUACOES.map(s => (
-            <div className="card" key={s}><span>{s}</span><strong>{resumo.porSituacao[s] || 0}</strong></div>
-          ))}
-          {admin && resumo.top.length > 0 && (
-            <div className="card largo">
-              <span>Por responsável</span>
-              <ul>{resumo.top.map(([n, q]) => <li key={n}>{n}: <b>{q}</b></li>)}</ul>
-            </div>
-          )}
         </div>
 
         <div className="filtros">
@@ -253,10 +259,19 @@ export default function ReservasPainel() {
             <option value="">Todos os responsáveis</option>
             {responsaveis.map(r => <option key={r}>{r}</option>)}
           </select>
+          <label className="filtro-data">De <input type="date" value={dataDe} onChange={e => setDataDe(e.target.value)} /></label>
+          <label className="filtro-data">Até <input type="date" value={dataAte} onChange={e => setDataAte(e.target.value)} /></label>
+          <div className="alternar">
+            <button className={visao === 'dashboard' ? 'ativo' : ''} onClick={() => trocarVisao('dashboard')}>Dashboard</button>
+            <button className={visao === 'tabela' ? 'ativo' : ''} onClick={() => trocarVisao('tabela')}>Tabela</button>
+          </div>
         </div>
 
         {erro && <div className="form-error">{erro}</div>}
 
+        {visao === 'dashboard' && <Dashboard reservas={filtradas} lotes={lotes} />}
+
+        {visao === 'tabela' && (
         <div className="tabela-wrap">
           <table className="tabela">
             <thead>
@@ -296,6 +311,7 @@ export default function ReservasPainel() {
             </tbody>
           </table>
         </div>
+        )}
       </section>
 
       {detalhe && <Detalhe reserva={detalhe} onClose={() => setDetalhe(null)} onAtualizado={carregar} />}
