@@ -667,3 +667,8 @@ button.auto-status {
 .colunas-menu label { display: flex; gap: 8px; align-items: center; padding: 3px 0; cursor: pointer; }
 .colunas-atalhos { display: flex; gap: 14px; padding-bottom: 6px; margin-bottom: 4px; border-bottom: 1px solid #eee; }
 .tabela td { max-width: 280px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.situacao-celula { display: inline-flex; align-items: center; gap: 6px; }
+.tag { font-size: 11px; padding: 2px 8px; border-radius: 999px; }
+.tag.ativa { background: #e8f5ee; color: #1d7a42; }
+.tag.cancelada { background: #f3f3f3; color: #888; }

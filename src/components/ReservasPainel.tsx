@@ -6,7 +6,9 @@ import autoTable from 'jspdf-autotable';
 import { useAuth } from '@/src/lib/auth';
 import { db, FUNCAO_ANEXOS, mensagemErro, supabase, type Reserva } from '@/src/lib/supabase';
 
-const SITUACOES = ['Pendente', 'Aprovada', 'Cancelada'];
+// Sem etapa de aprovação: a reserva nasce ativa (lote já fica reservado) e só admin cancela.
+const SITUACOES = ['Ativa', 'Cancelada'];
+const situacaoDe = (r: Reserva) => (r.situacao === 'Cancelada' ? 'Cancelada' : 'Ativa');
 
 // Todas as colunas da reserva (exportação CSV e detalhe).
 const COLUNAS: [string, string][] = [
@@ -44,6 +46,7 @@ function texto(r: Reserva, col: string): string {
   const v = r[col];
   if (v === null || v === undefined) return '';
   if (Array.isArray(v)) return v.join(', ');
+  if (col === 'situacao') return v === 'Cancelada' ? 'Cancelada' : 'Ativa';
   if (col === 'criado_em') return new Date(String(v)).toLocaleString('pt-BR');
   if (/^data_/.test(col)) {
     const m = String(v).match(/^(\d{4})-(\d{2})-(\d{2})/);
@@ -110,7 +113,7 @@ export default function ReservasPainel() {
   const filtradas = useMemo(() => {
     const q = busca.trim().toLowerCase();
     const lista = reservas.filter(r =>
-      (!fSituacao || r.situacao === fSituacao) &&
+      (!fSituacao || situacaoDe(r) === fSituacao) &&
       (!fResponsavel || r.responsavel_reserva === fResponsavel) &&
       (!q || COLUNAS.some(([c]) => texto(r, c).toLowerCase().includes(q)))
     );
@@ -129,7 +132,7 @@ export default function ReservasPainel() {
     const porSituacao: Record<string, number> = {};
     const porResponsavel: Record<string, number> = {};
     filtradas.forEach(r => {
-      porSituacao[r.situacao] = (porSituacao[r.situacao] || 0) + 1;
+      porSituacao[situacaoDe(r)] = (porSituacao[situacaoDe(r)] || 0) + 1;
       const resp = String(r.responsavel_reserva || '—');
       porResponsavel[resp] = (porResponsavel[resp] || 0) + 1;
     });
@@ -164,8 +167,8 @@ export default function ReservasPainel() {
     doc.save(`reservas-${new Date().toISOString().slice(0, 10)}.pdf`);
   }
 
-  async function mudarSituacao(r: Reserva, nova: string) {
-    if (nova === r.situacao) return;
+  async function mudarSituacao(r: Reserva, nova: 'Ativa' | 'Cancelada') {
+    if (nova === situacaoDe(r)) return;
     try {
       if (nova === 'Cancelada') {
         if (!confirm(`Cancelar a reserva do lote ${r.lote}? O lote volta a ficar disponível.`)) return;
@@ -174,7 +177,8 @@ export default function ReservasPainel() {
         const { error: e2 } = await db.from('reservas_lotes').update({ status: 'disponivel', atualizado_em: new Date().toISOString() }).eq('numero', r.lote);
         if (e2) throw e2;
       } else {
-        if (r.situacao === 'Cancelada') {
+        if (!confirm(`Reativar a reserva do lote ${r.lote}? O lote volta a ficar reservado.`)) return;
+        {
           const { data: l } = await db.from('reservas_lotes').select('status').eq('numero', r.lote).single();
           if (l?.status !== 'disponivel') throw new Error(`O lote ${r.lote} já não está disponível.`);
           const { error: e2 } = await db.from('reservas_lotes').update({ status: 'reservado', atualizado_em: new Date().toISOString() }).eq('numero', r.lote);
@@ -270,13 +274,15 @@ export default function ReservasPainel() {
                   {VISIVEIS.map(([c]) => (
                     <td key={c}>
                       {c === 'situacao' && admin ? (
-                        <select
-                          value={r.situacao}
-                          onClick={e => e.stopPropagation()}
-                          onChange={e => mudarSituacao(r, e.target.value)}
-                        >
-                          {SITUACOES.map(s => <option key={s}>{s}</option>)}
-                        </select>
+                        <span className="situacao-celula">
+                          <span className={situacaoDe(r) === 'Cancelada' ? 'tag cancelada' : 'tag ativa'}>{situacaoDe(r)}</span>
+                          <button
+                            className="mini"
+                            onClick={e => { e.stopPropagation(); mudarSituacao(r, situacaoDe(r) === 'Cancelada' ? 'Ativa' : 'Cancelada'); }}
+                          >
+                            {situacaoDe(r) === 'Cancelada' ? 'Reativar' : 'Cancelar'}
+                          </button>
+                        </span>
                       ) : /^https?:\/\//.test(texto(r, c)) ? (
                         <a href={texto(r, c)} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()}>abrir</a>
                       ) : texto(r, c)}
