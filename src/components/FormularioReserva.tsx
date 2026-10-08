@@ -10,7 +10,7 @@ import {
   sugestaoPrecoCondicoes,
   VALOR_ARRAS_TEXTO
 } from '@/src/lib/arras';
-import { db, mensagemErro, supabase } from '@/src/lib/supabase';
+import { db, FUNCAO_ANEXOS, mensagemErro, supabase } from '@/src/lib/supabase';
 
 // Campos da reserva (snake_case no banco) -> campos do formulário.
 const DO_BANCO: Record<string, string> = {
@@ -249,7 +249,7 @@ export default function FormularioReserva({
         const fd = new FormData();
         fd.append('reserva_id', String(reservaId));
         anexos.forEach(([k, f]) => fd.append(k, f));
-        const { error: erroAnexos } = await supabase.functions.invoke('reservas-anexos', { body: fd });
+        const { error: erroAnexos } = await supabase.functions.invoke(FUNCAO_ANEXOS, { body: fd });
         if (erroAnexos) {
           onSuccess(`Lote ${lote.numero} reservado, mas os anexos não foram enviados (${mensagemErro(erroAnexos)}). Envie-os novamente pela aba de reservas.`);
           return;

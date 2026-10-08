@@ -17,6 +17,10 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
 
 export const db = supabase.schema('marketing');
 
+// Edge Function que salva os anexos no Drive (código em supabase/functions/reservas-anexos;
+// publicada no Supabase com o nome "dynamic-service").
+export const FUNCAO_ANEXOS = 'dynamic-service';
+
 export type Perfil = {
   id: string;
   user_id: string | null;

@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { useAuth } from '@/src/lib/auth';
-import { db, mensagemErro, supabase, type Reserva } from '@/src/lib/supabase';
+import { db, FUNCAO_ANEXOS, mensagemErro, supabase, type Reserva } from '@/src/lib/supabase';
 
 const SITUACOES = ['Pendente', 'Aprovada', 'Cancelada'];
 
@@ -272,7 +272,7 @@ function Detalhe({ reserva, onClose, onAtualizado }: { reserva: Reserva; onClose
     const fd = new FormData();
     fd.append('reserva_id', String(reserva.id));
     anexos.forEach(([k, f]) => fd.append(k, f));
-    const { error } = await supabase.functions.invoke('reservas-anexos', { body: fd });
+    const { error } = await supabase.functions.invoke(FUNCAO_ANEXOS, { body: fd });
     setEnviando(false);
     if (error) setMsg(`Erro ao enviar: ${mensagemErro(error)}`);
     else {
