@@ -36,7 +36,9 @@ const INTERMEDIACAO_YOUNG = 'Young';
 const INTERMEDIACAO_PARCEIRO = 'Corretor parceiro / Imobiliária';
 const intermediacoes = [INTERMEDIACAO_YOUNG, INTERMEDIACAO_PARCEIRO];
 
-const responsaveis = ['Helen Cardoso','Joana Mantovane','Matheus Padilha','RG Imóveis','Aline Imóveis','Victor Bortoluzzi','Mastercruz Imobiliária','Imobiliária Cruz Alta','Valdair Didone','Domingos Imóveis','Simone - Di Bento Imóveis','Távola Imobiliária','Erthal Imóveis','Imobiliária Profit','Pedro Mariano Imóveis','Premium Imóveis','Lamaison Imóveis','Rodrigo Schimidt','Mariana Baumhardt','Personal Imoveis','Matheus Vargas'];
+// Responsável depende da intermediação: colaboradores da Young (e-mail @young) ou parceiros.
+const RESPONSAVEIS_YOUNG = ['Carol Bortoluzzi','Eduardo Tebaldi','Helen Cardoso','Joana Mantovane','Matheus Vargas'];
+const RESPONSAVEIS_PARCEIROS = ['Aline Imóveis','Domingos Imóveis','Erthal Imóveis','Imobiliária Cruz Alta','Imobiliária Profit','Lamaison Imóveis','Mariana Baumhardt','Mastercruz Imobiliária','Matheus Padilha','Pedro Mariano Imóveis','Personal Imoveis','Premium Imóveis','RG Imóveis','Rodrigo Schimidt','Simone - Di Bento Imóveis','Távola Imobiliária','Valdair Didone','Victor Bortoluzzi'];
 
 const interests = ['Animais de estimação','Automóveis','Casa e decoração','Ciências/Tecnologia','Cinema/Televisão/Jornalismo','Educação/Cultura','Esportes/Fitness/Saúde','Finanças/Economia','Gastronomia/Culinária','Negócios/Empreendedorismo','Política/Relações Públicas','Viagens/Turismo'];
 
@@ -297,7 +299,7 @@ export default function FormularioReserva({
                   required
                   value={form.intermediacao}
                   onChange={e =>
-                    setField('intermediacao', e.target.value)
+                    setForm(prev => ({ ...prev, intermediacao: e.target.value, responsavelReserva: '' }))
                   }
                 >
                   <option value="">Selecione</option>
@@ -311,6 +313,7 @@ export default function FormularioReserva({
               <Field label="Responsável pela reserva">
                 <select
                   required
+                  disabled={!form.intermediacao}
                   value={form.responsavelReserva}
                   onChange={e =>
                     setField(
@@ -319,9 +322,14 @@ export default function FormularioReserva({
                     )
                   }
                 >
-                  <option value="">Selecione</option>
+                  <option value="">{form.intermediacao ? 'Selecione' : 'Escolha a intermediação primeiro'}</option>
 
-                  {responsaveis.map(x => (
+                  {(form.intermediacao === INTERMEDIACAO_YOUNG
+                    ? RESPONSAVEIS_YOUNG
+                    : form.intermediacao === INTERMEDIACAO_PARCEIRO
+                      ? RESPONSAVEIS_PARCEIROS
+                      : []
+                  ).map(x => (
                     <option key={x}>{x}</option>
                   ))}
                 </select>
