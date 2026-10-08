@@ -6,7 +6,8 @@ import { PDFDocument, PDFFont, PDFPage, StandardFonts, rgb } from 'pdf-lib';
 import detalhes from '@/src/data/lotes-detalhes.json';
 
 export const VALOR_ARRAS = 2000;
-export const VALOR_ARRAS_TEXTO = 'R$ 2.000,00 (dois mil reais)';
+export const VALOR_ARRAS_TEXTO =
+  'R$ 2.000,00 (dois mil reais), pagos diretamente à Outorgante, CAY Empreendimentos Imobiliários SPE Ltda., via PIX para a chave CNPJ 46.138.992/0001-19.';
 export const SEM_INTERMEDIACAO = 'A presente transação não é objeto de intermediação imobiliária.';
 
 // A qualificação do Outorgante (dados pessoais) fica no banco: marketing.reservas_config,

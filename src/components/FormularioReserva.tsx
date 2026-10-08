@@ -1058,8 +1058,8 @@ export default function FormularioReserva({
                 />
               </Field>
 
-              <Field label="Valor do Arras">
-                <input readOnly value={VALOR_ARRAS_TEXTO} />
+              <Field label="Valor do Arras" full>
+                <textarea readOnly rows={2} value={VALOR_ARRAS_TEXTO} />
               </Field>
 
               <Field label="Preço e Condições" full>
