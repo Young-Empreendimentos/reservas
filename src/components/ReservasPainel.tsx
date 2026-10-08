@@ -34,10 +34,10 @@ const COLUNAS: [string, string][] = [
   ['comprovante_pagamento', 'Comprovante de pagamento'],
 ];
 
-// Colunas da tabela na tela e no PDF.
-const VISIVEIS: [string, string][] = [
+// Colunas que aparecem por padrão (o usuário pode escolher outras no botão "Colunas").
+const PADRAO: [string, string][] = [
   ['criado_em', 'Data'], ['lote', 'Lote'], ['nome', 'Comprador'], ['cpf', 'CPF'], ['telefone', 'Telefone'],
-  ['responsavel_reserva', 'Responsável'], ['intermediacao', 'Intermediação'], ['situacao', 'Situação'],
+  ['responsavel_reserva', 'Responsável'], ['intermediacao', 'Intermediação'], ['situacao', 'Situação'], ['criado_por_email', 'Criado por'],
 ];
 
 function texto(r: Reserva, col: string): string {
@@ -71,6 +71,23 @@ export default function ReservasPainel() {
   const [fResponsavel, setFResponsavel] = useState('');
   const [ordem, setOrdem] = useState<{ col: string; asc: boolean }>({ col: 'criado_em', asc: false });
   const [detalhe, setDetalhe] = useState<Reserva | null>(null);
+  const [visiveis, setVisiveis] = useState<string[]>(() => PADRAO.map(([c]) => c));
+  const [escolhendo, setEscolhendo] = useState(false);
+
+  // Colunas escolhidas ficam salvas neste navegador.
+  useEffect(() => {
+    try {
+      const salvo = JSON.parse(localStorage.getItem('reservas.colunas') || 'null');
+      if (Array.isArray(salvo) && salvo.length) setVisiveis(salvo);
+    } catch { /* sem armazenamento local */ }
+  }, []);
+
+  function mudarColunas(cols: string[]) {
+    setVisiveis(cols);
+    try { localStorage.setItem('reservas.colunas', JSON.stringify(cols)); } catch { /* ok */ }
+  }
+
+  const VISIVEIS = COLUNAS.filter(([c]) => visiveis.includes(c) && (admin || c !== 'criado_por_email'));
 
   const carregar = useCallback(async () => {
     setCarregando(true);
@@ -141,7 +158,7 @@ export default function ReservasPainel() {
       startY: 60,
       head: [VISIVEIS.map(([, l]) => l)],
       body: filtradas.map(r => VISIVEIS.map(([c]) => texto(r, c))),
-      styles: { fontSize: 8, cellPadding: 3 },
+      styles: { fontSize: VISIVEIS.length > 12 ? 5.5 : VISIVEIS.length > 8 ? 7 : 8, cellPadding: 2, overflow: 'linebreak' },
       headStyles: { fillColor: [254, 80, 9] },
     });
     doc.save(`reservas-${new Date().toISOString().slice(0, 10)}.pdf`);
@@ -183,6 +200,27 @@ export default function ReservasPainel() {
             </div>
           </div>
           <div className="acoes">
+            <div className="colunas-wrap">
+              <button className="secondary-button" onClick={() => setEscolhendo(v => !v)}>Colunas ({VISIVEIS.length})</button>
+              {escolhendo && (
+                <div className="colunas-menu">
+                  <div className="colunas-atalhos">
+                    <button className="link" onClick={() => mudarColunas(COLUNAS.map(([c]) => c))}>Mostrar todas</button>
+                    <button className="link" onClick={() => mudarColunas(PADRAO.map(([c]) => c))}>Padrão</button>
+                  </div>
+                  {COLUNAS.filter(([c]) => admin || c !== 'criado_por_email').map(([c, l]) => (
+                    <label key={c}>
+                      <input
+                        type="checkbox"
+                        checked={visiveis.includes(c)}
+                        onChange={e => mudarColunas(e.target.checked ? [...visiveis, c] : visiveis.filter(x => x !== c))}
+                      />
+                      {l}
+                    </label>
+                  ))}
+                </div>
+              )}
+            </div>
             <button className="secondary-button" onClick={exportarCsv} disabled={!filtradas.length}>Baixar CSV</button>
             <button className="secondary-button" onClick={exportarPdf} disabled={!filtradas.length}>Baixar PDF</button>
           </div>
@@ -224,7 +262,6 @@ export default function ReservasPainel() {
                     {l}{ordem.col === c ? (ordem.asc ? ' ▲' : ' ▼') : ''}
                   </th>
                 ))}
-                {admin && <th onClick={() => ordenar('criado_por_email')}>Criado por</th>}
               </tr>
             </thead>
             <tbody>
@@ -240,14 +277,15 @@ export default function ReservasPainel() {
                         >
                           {SITUACOES.map(s => <option key={s}>{s}</option>)}
                         </select>
+                      ) : /^https?:\/\//.test(texto(r, c)) ? (
+                        <a href={texto(r, c)} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()}>abrir</a>
                       ) : texto(r, c)}
                     </td>
                   ))}
-                  {admin && <td>{texto(r, 'criado_por_email')}</td>}
                 </tr>
               ))}
               {!filtradas.length && (
-                <tr><td colSpan={VISIVEIS.length + 1} className="vazio">{carregando ? 'Carregando...' : 'Nenhuma reserva.'}</td></tr>
+                <tr><td colSpan={VISIVEIS.length || 1} className="vazio">{carregando ? 'Carregando...' : 'Nenhuma reserva.'}</td></tr>
               )}
             </tbody>
           </table>

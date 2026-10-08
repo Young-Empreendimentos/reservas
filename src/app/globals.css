@@ -656,3 +656,14 @@ button.auto-status {
   .tabs button { padding: 8px 8px; font-size: 13px; }
   .usuario span { display: none; }
 }
+
+/* Escolha de colunas da tabela de reservas */
+.colunas-wrap { position: relative; }
+.colunas-menu {
+  position: absolute; right: 0; top: calc(100% + 6px); z-index: 30; background: #fff; border: 1px solid #e5e5e5;
+  border-radius: 10px; box-shadow: 0 12px 30px rgba(0,0,0,.12); padding: 10px 12px; width: 260px;
+  max-height: 420px; overflow-y: auto; font-size: 13px;
+}
+.colunas-menu label { display: flex; gap: 8px; align-items: center; padding: 3px 0; cursor: pointer; }
+.colunas-atalhos { display: flex; gap: 14px; padding-bottom: 6px; margin-bottom: 4px; border-bottom: 1px solid #eee; }
+.tabela td { max-width: 280px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
