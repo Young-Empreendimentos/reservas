@@ -711,9 +711,14 @@ button.auto-status {
 
 /* Tipo da ficha: Pré-venda x Reserva */
 .tipo-escolha { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; }
-.tipo-opcao { display: flex; gap: 10px; align-items: flex-start; border: 1px solid #ddd; border-radius: 10px; padding: 10px 12px; cursor: pointer; background: #fff; }
-.tipo-opcao.ativo { border-color: var(--young-orange); box-shadow: 0 0 0 1px var(--young-orange); }
-.tipo-opcao.bloqueado { opacity: .55; cursor: not-allowed; }
-.tipo-opcao input { margin-top: 3px; accent-color: var(--young-orange); }
-.tipo-opcao span { display: flex; flex-direction: column; gap: 2px; }
-.tipo-opcao small { color: #777; font-size: 12px; }
+.tipo-opcao { position: relative; display: flex; gap: 12px; align-items: center; border: 1px solid #ddd; border-radius: 12px; padding: 12px 14px; cursor: pointer; background: #fff; transition: border-color .15s, background .15s; }
+.tipo-opcao:hover { border-color: #bbb; }
+.tipo-opcao.ativo { border-color: var(--young-orange); background: #fff6f1; box-shadow: 0 0 0 1px var(--young-orange); }
+.tipo-opcao.bloqueado { opacity: .5; cursor: not-allowed; }
+/* Rádio nativo escondido (o estilo de .field input deixava ele enorme); a bolinha é desenhada */
+.field .tipo-opcao input { position: absolute; opacity: 0; width: 1px; height: 1px; padding: 0; border: 0; margin: 0; pointer-events: none; }
+.tipo-bolinha { flex: none; width: 18px; height: 18px; border-radius: 50%; border: 2px solid #c4c4c4; background: #fff; }
+.tipo-opcao.ativo .tipo-bolinha { border-color: var(--young-orange); box-shadow: inset 0 0 0 4px #fff; background: var(--young-orange); }
+.tipo-opcao input:focus-visible ~ .tipo-bolinha { outline: 2px solid var(--young-orange); outline-offset: 2px; }
+.tipo-texto { display: flex; flex-direction: column; gap: 2px; }
+.tipo-texto small { color: #777; font-size: 12px; }

@@ -346,7 +346,8 @@ export default function FormularioReserva({
                           checked={tipo === t}
                           onChange={() => setTipo(t)}
                         />
-                        <span>
+                        <span className="tipo-bolinha" />
+                        <span className="tipo-texto">
                           <b>{t}</b>
                           <small>
                             {t === TIPO_PRE_VENDA
