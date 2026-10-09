@@ -1017,7 +1017,7 @@ function avisarNovaReserva_(para, r) {
 
   MailApp.sendEmail({
     to: destinos.join(','),
-    subject: 'Nova reserva: lote ' + esc(r.lote) + ' (Erico Verissimo - Fase 2)',
+    subject: 'Nova reserva: lote ' + String(r.lote || '') + ' (Erico Verissimo - Fase 2)',
     name: 'Reservas Young',
     htmlBody:
       '<div style="font-family:Arial,sans-serif;font-size:14px;color:#222">' +
@@ -1027,6 +1027,11 @@ function avisarNovaReserva_(para, r) {
       '</div>'
   });
   return destinos.length;
+}
+
+// Rode uma vez no editor para autorizar o envio de e-mails (MailApp).
+function autorizarEmail() {
+  return MailApp.getRemainingDailyQuota();
 }
 
 function json_(data) {
