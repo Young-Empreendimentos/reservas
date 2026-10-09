@@ -11,6 +11,15 @@ import {
   VALOR_ARRAS_TEXTO
 } from '@/src/lib/arras';
 import { db, FUNCAO_ANEXOS, mensagemErro, supabase } from '@/src/lib/supabase';
+import { useAuth } from '@/src/lib/auth';
+import {
+  INTERMEDIACAO_PARCEIRO,
+  INTERMEDIACAO_YOUNG,
+  INTERMEDIACOES,
+  RESPONSAVEIS_PARCEIROS,
+  RESPONSAVEIS_YOUNG,
+  vinculoDoUsuario
+} from '@/src/lib/responsaveis';
 
 // Campos da reserva (snake_case no banco) -> campos do formulário.
 const DO_BANCO: Record<string, string> = {
@@ -32,13 +41,7 @@ const DO_BANCO: Record<string, string> = {
   recomendacao: 'recomendacao', origem: 'origem'
 };
 
-const INTERMEDIACAO_YOUNG = 'Young';
-const INTERMEDIACAO_PARCEIRO = 'Corretor parceiro / Imobiliária';
-const intermediacoes = [INTERMEDIACAO_YOUNG, INTERMEDIACAO_PARCEIRO];
-
-// Responsável depende da intermediação: colaboradores da Young (e-mail @young) ou parceiros.
-const RESPONSAVEIS_YOUNG = ['Carol Bortoluzzi','Eduardo Tebaldi','Helen Cardoso','Joana Mantovane','Matheus Vargas'];
-const RESPONSAVEIS_PARCEIROS = ['Aline Imóveis','Domingos Imóveis','Erthal Imóveis','Imobiliária Cruz Alta','Imobiliária Profit','Lamaison Imóveis','Mariana Baumhardt','Mastercruz Imobiliária','Matheus Padilha','Pedro Mariano Imóveis','Personal Imoveis','Premium Imóveis','RG Imóveis','Rodrigo Schimidt','Simone - Di Bento Imóveis','Távola Imobiliária','Valdair Didone','Victor Bortoluzzi'];
+const intermediacoes = INTERMEDIACOES;
 
 const interests = ['Animais de estimação','Automóveis','Casa e decoração','Ciências/Tecnologia','Cinema/Televisão/Jornalismo','Educação/Cultura','Esportes/Fitness/Saúde','Finanças/Economia','Gastronomia/Culinária','Negócios/Empreendedorismo','Política/Relações Públicas','Viagens/Turismo'];
 
@@ -54,10 +57,13 @@ export default function FormularioReserva({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [secondary, setSecondary] = useState(false);
+  const { perfil } = useAuth();
+  // Já vem preenchido com a conta logada; o usuário pode trocar.
+  const [vinculo] = useState(() => vinculoDoUsuario(perfil));
 
   const [form, setForm] = useState<Record<string, string>>({
-    intermediacao: '',
-    responsavelReserva: '',
+    intermediacao: vinculo.intermediacao,
+    responsavelReserva: vinculo.responsavel,
     nome: '',
     escolaridade: '',
     nacionalidade: 'Brasileira',

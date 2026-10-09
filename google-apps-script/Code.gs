@@ -44,6 +44,15 @@ function doPost(e) {
       return json_({ ok: true, ...links });
     }
 
+    // Sistema novo: o banco avisa cada reserva nova; envia e-mail aos admins.
+    if (body.action === 'notificar_reserva') {
+      if (!body.token || body.token !== propriedade_('ANEXOS_TOKEN')) {
+        return json_({ ok: false, error: 'Não autorizado.' });
+      }
+      const enviados = avisarNovaReserva_(body.para || [], body.reserva || {});
+      return json_({ ok: true, enviados: enviados });
+    }
+
     if (body.action === 'reservar') {
       console.log('INICIANDO RESERVA');
 
@@ -980,6 +989,44 @@ function numberOrNull_(value) {
   return Number.isFinite(number)
     ? number
     : null;
+}
+
+// E-mail de aviso de nova reserva. Só envia para contas da Young.
+function avisarNovaReserva_(para, r) {
+  const destinos = (Array.isArray(para) ? para : [])
+    .map(function (e) { return String(e || '').trim().toLowerCase(); })
+    .filter(function (e) { return /@youngempreendimentos\.com\.br$/.test(e); });
+  if (!destinos.length) return 0;
+
+  const esc = function (v) {
+    return String(v == null || v === '' ? '—' : v)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+  };
+  const linhas = [
+    ['Lote', r.lote],
+    ['Cliente', r.nome],
+    ['Intermediação', r.intermediacao],
+    ['Responsável', r.responsavel],
+    ['Forma de pagamento', r.forma_pagamento],
+    ['Registrada por', r.criado_por],
+    ['Data', r.criado_em]
+  ];
+  const tabela = linhas.map(function (l) {
+    return '<tr><td style="padding:4px 12px 4px 0;color:#777">' + l[0] + '</td><td style="padding:4px 0"><b>' + esc(l[1]) + '</b></td></tr>';
+  }).join('');
+
+  MailApp.sendEmail({
+    to: destinos.join(','),
+    subject: 'Nova reserva: lote ' + esc(r.lote) + ' (Erico Verissimo - Fase 2)',
+    name: 'Reservas Young',
+    htmlBody:
+      '<div style="font-family:Arial,sans-serif;font-size:14px;color:#222">' +
+      '<p>Uma nova reserva foi registrada.</p>' +
+      '<table style="border-collapse:collapse">' + tabela + '</table>' +
+      '<p><a href="https://reservas.youngempreendimentos.com.br" style="color:#fe5009">Abrir o sistema de reservas</a></p>' +
+      '</div>'
+  });
+  return destinos.length;
 }
 
 function json_(data) {

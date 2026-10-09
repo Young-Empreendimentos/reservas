@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useAuth } from '@/src/lib/auth';
 import { db, mensagemErro, type Perfil } from '@/src/lib/supabase';
+import { RESPONSAVEIS_PARCEIROS, RESPONSAVEIS_YOUNG, vinculoDoUsuario } from '@/src/lib/responsaveis';
 
 const ROTULO_STATUS: Record<Perfil['status'], string> = {
   pendente: 'Aguardando',
@@ -36,6 +37,13 @@ export default function UsuariosPainel() {
     await carregar();
   }
 
+  // Vínculo com o responsável: preenche intermediação e responsável nas reservas dessa conta.
+  async function vincular(u: Perfil, responsavel: string) {
+    const { error } = await db.from('reservas_usuarios').update({ responsavel: responsavel || null }).eq('id', u.id);
+    if (error) alert(mensagemErro(error));
+    await carregar();
+  }
+
   const pendentes = usuarios.filter(u => u.status === 'pendente');
 
   return (
@@ -57,7 +65,7 @@ export default function UsuariosPainel() {
         <div className="tabela-wrap">
           <table className="tabela">
             <thead>
-              <tr><th>Nome</th><th>E-mail</th><th>Situação</th><th>Papel</th><th>Pedido em</th><th>Decidido por</th><th /></tr>
+              <tr><th>Nome</th><th>E-mail</th><th>Situação</th><th>Papel</th><th>Responsável nas reservas</th><th>Pedido em</th><th>Decidido por</th><th /></tr>
             </thead>
             <tbody>
               {usuarios.map(u => {
@@ -75,6 +83,22 @@ export default function UsuariosPainel() {
                       >
                         <option value="usuario">Usuário</option>
                         <option value="admin">Admin</option>
+                      </select>
+                    </td>
+                    <td>
+                      <select value={u.responsavel || ''} onChange={e => vincular(u, e.target.value)}>
+                        <option value="">
+                          {(() => {
+                            const auto = vinculoDoUsuario({ ...u, responsavel: null }).responsavel;
+                            return auto ? `Automático (${auto})` : 'Automático (nenhum)';
+                          })()}
+                        </option>
+                        <optgroup label="Young">
+                          {RESPONSAVEIS_YOUNG.map(r => <option key={r}>{r}</option>)}
+                        </optgroup>
+                        <optgroup label="Corretor parceiro / Imobiliária">
+                          {RESPONSAVEIS_PARCEIROS.map(r => <option key={r}>{r}</option>)}
+                        </optgroup>
                       </select>
                     </td>
                     <td>{new Date(u.criado_em).toLocaleDateString('pt-BR')}</td>

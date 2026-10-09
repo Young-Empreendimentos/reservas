@@ -651,6 +651,13 @@ button.auto-status {
 .detalhe-lista { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 10px 18px; margin: 0 0 18px; }
 .detalhe-lista dt { font-size: 11px; color: #888; }
 .detalhe-lista dd { margin: 2px 0 0; font-size: 13px; word-break: break-word; }
+/* Histórico da reserva (só admin) */
+.historico { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.historico > li { border-left: 3px solid var(--young-orange); padding: 2px 0 2px 10px; }
+.historico-topo { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; font-size: 13px; }
+.historico-topo span { font-size: 12px; color: #888; }
+.historico ul { margin: 4px 0 0; padding-left: 16px; font-size: 12px; color: #444; }
+.historico ul li { word-break: break-word; }
 
 @media (max-width: 700px) {
   .tabs button { padding: 8px 8px; font-size: 13px; }

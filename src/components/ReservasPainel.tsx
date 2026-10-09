@@ -56,6 +56,37 @@ function texto(r: Reserva, col: string): string {
   return String(v);
 }
 
+// Campos que o admin pode editar no detalhe (lote, situação, autor e anexos têm fluxo próprio).
+const NAO_EDITAVEIS = new Set([
+  'id', 'criado_em', 'lote', 'situacao', 'criado_por_email',
+  'pasta_anexos', 'documento_titular', 'documento_segundo_comprador', 'comprovante_residencia', 'comprovante_pagamento',
+]);
+const LONGOS = new Set(['observacoes', 'imovel_objeto', 'valor_arras_texto', 'preco_condicoes', 'valor_corretagem_beneficiario']);
+const ROTULO = Object.fromEntries(COLUNAS);
+const ACOES: Record<string, string> = {
+  criada: 'Reserva criada', editada: 'Dados editados', cancelada: 'Reserva cancelada',
+  reativada: 'Reserva reativada', anexos: 'Anexos enviados',
+};
+
+type Historico = {
+  id: number;
+  acao: string;
+  alteracoes: Record<string, { de: unknown; para: unknown }> | null;
+  feito_por_email: string | null;
+  feito_em: string;
+};
+
+const valorHist = (v: unknown) =>
+  v === null || v === undefined || v === '' ? '(vazio)' : Array.isArray(v) ? v.join(', ') : String(v);
+
+// Valor do campo como texto de formulário (datas em AAAA-MM-DD, listas separadas por vírgula).
+function paraCampo(r: Reserva, c: string): string {
+  const v = r[c];
+  if (v === null || v === undefined) return '';
+  if (Array.isArray(v)) return v.join(', ');
+  return /^data_/.test(c) ? String(v).slice(0, 10) : String(v);
+}
+
 function baixar(nome: string, conteudo: BlobPart, tipo: string) {
   const url = URL.createObjectURL(new Blob([conteudo], { type: tipo }));
   const a = document.createElement('a');
@@ -320,9 +351,62 @@ export default function ReservasPainel() {
 }
 
 function Detalhe({ reserva, onClose, onAtualizado }: { reserva: Reserva; onClose: () => void; onAtualizado: () => void }) {
+  const { admin } = useAuth();
   const [files, setFiles] = useState<Record<string, File | null>>({});
   const [enviando, setEnviando] = useState(false);
   const [msg, setMsg] = useState('');
+  const [atual, setAtual] = useState<Reserva>(reserva);
+  const [editando, setEditando] = useState(false);
+  const [rascunho, setRascunho] = useState<Record<string, string>>({});
+  const [salvando, setSalvando] = useState(false);
+  const [historico, setHistorico] = useState<Historico[]>([]);
+
+  // Histórico: só admin (a política do banco também bloqueia os demais).
+  const carregarHistorico = useCallback(async () => {
+    if (!admin) return;
+    const { data } = await db.from('reservas_historico')
+      .select('id,acao,alteracoes,feito_por_email,feito_em')
+      .eq('reserva_id', reserva.id)
+      .order('feito_em', { ascending: false });
+    setHistorico((data || []) as Historico[]);
+  }, [admin, reserva.id]);
+
+  useEffect(() => { carregarHistorico(); }, [carregarHistorico]);
+
+  const editaveis = COLUNAS.filter(([c]) => !NAO_EDITAVEIS.has(c));
+
+  function comecarEdicao() {
+    setRascunho(Object.fromEntries(editaveis.map(([c]) => [c, paraCampo(atual, c)])));
+    setEditando(true);
+    setMsg('');
+  }
+
+  async function salvarEdicao() {
+    const mudancas: Record<string, unknown> = {};
+    editaveis.forEach(([c]) => {
+      const depois = (rascunho[c] ?? '').trim();
+      if (depois === paraCampo(atual, c)) return;
+      mudancas[c] = c === 'interesses'
+        ? (depois ? depois.split(',').map(x => x.trim()).filter(Boolean) : null)
+        : depois || null;
+    });
+    if (!Object.keys(mudancas).length) { setEditando(false); return; }
+    if (!(rascunho.nome ?? '').trim() || !(rascunho.cpf ?? '').trim()) {
+      setMsg('Nome e CPF não podem ficar vazios.');
+      return;
+    }
+    setSalvando(true);
+    const { data, error } = await db.from('reservas')
+      .update({ ...mudancas, atualizado_em: new Date().toISOString() })
+      .eq('id', reserva.id).select('*').single();
+    setSalvando(false);
+    if (error) { setMsg(`Erro ao salvar: ${mensagemErro(error)}`); return; }
+    setAtual(data as Reserva);
+    setEditando(false);
+    setMsg('Alterações salvas.');
+    onAtualizado();
+    carregarHistorico();
+  }
 
   async function enviarAnexos() {
     const anexos = Object.entries(files).filter(([, f]) => f) as [string, File][];
@@ -338,6 +422,7 @@ function Detalhe({ reserva, onClose, onAtualizado }: { reserva: Reserva; onClose
     else {
       setMsg('Anexos enviados.');
       onAtualizado();
+      carregarHistorico();
     }
   }
 
@@ -350,24 +435,56 @@ function Detalhe({ reserva, onClose, onAtualizado }: { reserva: Reserva; onClose
       <div className="reservation-modal" onMouseDown={e => e.stopPropagation()}>
         <div className="reservation-header">
           <div>
-            <div className="modal-kicker">Reserva nº {reserva.id}</div>
-            <h2 className="modal-title">Lote {reserva.lote} · {reserva.nome}</h2>
+            <div className="modal-kicker">Reserva nº {atual.id}</div>
+            <h2 className="modal-title">Lote {atual.lote} · {atual.nome}</h2>
           </div>
-          <button className="close" onClick={onClose} type="button">×</button>
+          <div className="acoes">
+            {admin && !editando && <button className="secondary-button" onClick={comecarEdicao} type="button">Editar</button>}
+            <button className="close" onClick={onClose} type="button">×</button>
+          </div>
         </div>
         <div className="reservation-form">
-          <dl className="detalhe-lista">
-            {COLUNAS.map(([c, l]) => {
-              const t = texto(reserva, c);
-              if (!t) return null;
-              return (
-                <div key={c}>
-                  <dt>{l}</dt>
-                  <dd>{link(reserva[c]) || t}</dd>
-                </div>
-              );
-            })}
-          </dl>
+          {editando ? (
+            <div className="form-section">
+              <h3>Editar dados da reserva</h3>
+              <div className="form-grid">
+                {editaveis.map(([c, l]) => (
+                  <label className={LONGOS.has(c) ? 'field full' : 'field'} key={c}>
+                    <span className="field-label">{l}</span>
+                    {LONGOS.has(c) ? (
+                      <textarea rows={3} value={rascunho[c] ?? ''} onChange={e => setRascunho(p => ({ ...p, [c]: e.target.value }))} />
+                    ) : (
+                      <input
+                        type={/^data_/.test(c) ? 'date' : 'text'}
+                        value={rascunho[c] ?? ''}
+                        onChange={e => setRascunho(p => ({ ...p, [c]: e.target.value }))}
+                      />
+                    )}
+                  </label>
+                ))}
+              </div>
+              {msg && <p className="field-hint">{msg}</p>}
+              <div className="form-actions">
+                <button className="secondary-button" onClick={() => { setEditando(false); setMsg(''); }} disabled={salvando} type="button">Descartar</button>
+                <button className="primary-button compacto" onClick={salvarEdicao} disabled={salvando} type="button">
+                  {salvando ? 'Salvando...' : 'Salvar alterações'}
+                </button>
+              </div>
+            </div>
+          ) : (
+            <dl className="detalhe-lista">
+              {COLUNAS.map(([c, l]) => {
+                const t = texto(atual, c);
+                if (!t) return null;
+                return (
+                  <div key={c}>
+                    <dt>{l}</dt>
+                    <dd>{link(atual[c]) || t}</dd>
+                  </div>
+                );
+              })}
+            </dl>
+          )}
 
           <div className="form-section">
             <h3>Enviar ou reenviar anexos</h3>
@@ -388,13 +505,42 @@ function Detalhe({ reserva, onClose, onAtualizado }: { reserva: Reserva; onClose
                 </label>
               ))}
             </div>
-            {msg && <p className="field-hint">{msg}</p>}
+            {msg && !editando && <p className="field-hint">{msg}</p>}
             <div className="form-actions">
               <button className="primary-button compacto" onClick={enviarAnexos} disabled={enviando}>
                 {enviando ? 'Enviando...' : 'Enviar anexos'}
               </button>
             </div>
           </div>
+
+          {admin && (
+            <div className="form-section">
+              <h3>Histórico</h3>
+              {!historico.length ? (
+                <p className="field-hint">Nenhum registro ainda.</p>
+              ) : (
+                <ul className="historico">
+                  {historico.map(h => (
+                    <li key={h.id}>
+                      <div className="historico-topo">
+                        <strong>{ACOES[h.acao] || h.acao}</strong>
+                        <span>{new Date(h.feito_em).toLocaleString('pt-BR')} · {h.feito_por_email || 'sistema'}</span>
+                      </div>
+                      {h.alteracoes && (
+                        <ul>
+                          {Object.entries(h.alteracoes).map(([c, v]) => (
+                            <li key={c}>
+                              <b>{ROTULO[c] || c}:</b> {valorHist(v.de)} → {valorHist(v.para)}
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>

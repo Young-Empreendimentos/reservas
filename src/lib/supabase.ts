@@ -31,6 +31,7 @@ export type Perfil = {
   criado_em: string;
   decidido_por: string | null;
   decidido_em: string | null;
+  responsavel: string | null;
 };
 
 export type LoteDb = {
