@@ -44,6 +44,25 @@ export default function UsuariosPainel() {
     await carregar();
   }
 
+  // Cadastro manual pelo admin (e-mail + nome): o usuário já entra liberado.
+  const [novo, setNovo] = useState<{ aberto: boolean; nome: string; email: string; papel: string; responsavel: string; salvando: boolean; msg: string }>(
+    { aberto: false, nome: '', email: '', papel: 'usuario', responsavel: '', salvando: false, msg: '' }
+  );
+
+  async function adicionar(e: React.FormEvent) {
+    e.preventDefault();
+    setNovo(n => ({ ...n, salvando: true, msg: '' }));
+    const { error } = await db.rpc('reservas_adicionar_usuario', {
+      p_email: novo.email, p_nome: novo.nome, p_papel: novo.papel, p_responsavel: novo.responsavel || null,
+    });
+    if (error) {
+      setNovo(n => ({ ...n, salvando: false, msg: mensagemErro(error) }));
+      return;
+    }
+    setNovo({ aberto: false, nome: '', email: '', papel: 'usuario', responsavel: '', salvando: false, msg: '' });
+    await carregar();
+  }
+
   const pendentes = usuarios.filter(u => u.status === 'pendente');
 
   return (
@@ -58,7 +77,51 @@ export default function UsuariosPainel() {
                 : 'Nenhum pedido de acesso pendente.'}
             </div>
           </div>
+          <div className="acoes">
+            <button className="primary-button compacto" onClick={() => setNovo(n => ({ ...n, aberto: !n.aberto, msg: '' }))}>
+              {novo.aberto ? 'Fechar' : '+ Adicionar usuário'}
+            </button>
+          </div>
         </div>
+
+        {novo.aberto && (
+          <form className="novo-usuario" onSubmit={adicionar}>
+            <label className="field">
+              <span className="field-label">Nome</span>
+              <input required value={novo.nome} onChange={e => setNovo(n => ({ ...n, nome: e.target.value }))} placeholder="Nome completo" />
+            </label>
+            <label className="field">
+              <span className="field-label">E-mail (conta Google)</span>
+              <input required type="email" value={novo.email} onChange={e => setNovo(n => ({ ...n, email: e.target.value }))} placeholder="nome@gmail.com" />
+            </label>
+            <label className="field">
+              <span className="field-label">Papel</span>
+              <select value={novo.papel} onChange={e => setNovo(n => ({ ...n, papel: e.target.value }))}>
+                <option value="usuario">Usuário</option>
+                <option value="admin">Admin</option>
+              </select>
+            </label>
+            <label className="field">
+              <span className="field-label">Responsável nas reservas</span>
+              <select value={novo.responsavel} onChange={e => setNovo(n => ({ ...n, responsavel: e.target.value }))}>
+                <option value="">Automático (pelo nome)</option>
+                <optgroup label="Young">
+                  {RESPONSAVEIS_YOUNG.map(r => <option key={r}>{r}</option>)}
+                </optgroup>
+                <optgroup label="Corretor parceiro / Imobiliária">
+                  {RESPONSAVEIS_PARCEIROS.map(r => <option key={r}>{r}</option>)}
+                </optgroup>
+              </select>
+            </label>
+            <div className="novo-usuario-acoes">
+              <button className="primary-button compacto" type="submit" disabled={novo.salvando}>
+                {novo.salvando ? 'Salvando...' : 'Adicionar e liberar'}
+              </button>
+            </div>
+            {novo.msg && <p className="form-error novo-usuario-msg">{novo.msg}</p>}
+            <p className="field-hint novo-usuario-msg">A pessoa entra com a conta Google desse e-mail e já cai liberada.</p>
+          </form>
+        )}
 
         {erro && <div className="form-error">{erro}</div>}
 

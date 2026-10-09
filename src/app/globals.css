@@ -722,3 +722,8 @@ button.auto-status {
 .tipo-opcao input:focus-visible ~ .tipo-bolinha { outline: 2px solid var(--young-orange); outline-offset: 2px; }
 .tipo-texto { display: flex; flex-direction: column; gap: 2px; }
 .tipo-texto small { color: #777; font-size: 12px; }
+
+/* Cadastro manual de usuário (admin) */
+.novo-usuario { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; align-items: end; background: #fafafa; border: 1px solid #eee; border-radius: 12px; padding: 14px; margin-bottom: 14px; }
+.novo-usuario-acoes { display: flex; align-items: end; }
+.novo-usuario-msg { grid-column: 1 / -1; margin: 0; }
