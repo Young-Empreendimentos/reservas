@@ -708,3 +708,12 @@ button.auto-status {
 .barra-valor { position: relative; flex: none; color: #888; }
 .barra-valor b { color: var(--black); font-weight: 600; }
 @media (max-width: 760px) { .painel-grafico.largo { grid-column: auto; } .graficos { grid-template-columns: 1fr; } }
+
+/* Tipo da ficha: Pré-venda x Reserva */
+.tipo-escolha { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 10px; }
+.tipo-opcao { display: flex; gap: 10px; align-items: flex-start; border: 1px solid #ddd; border-radius: 10px; padding: 10px 12px; cursor: pointer; background: #fff; }
+.tipo-opcao.ativo { border-color: var(--young-orange); box-shadow: 0 0 0 1px var(--young-orange); }
+.tipo-opcao.bloqueado { opacity: .55; cursor: not-allowed; }
+.tipo-opcao input { margin-top: 3px; accent-color: var(--young-orange); }
+.tipo-opcao span { display: flex; flex-direction: column; gap: 2px; }
+.tipo-opcao small { color: #777; font-size: 12px; }

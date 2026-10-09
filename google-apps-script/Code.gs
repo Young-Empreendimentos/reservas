@@ -1002,7 +1002,13 @@ function avisarNovaReserva_(para, r) {
     return String(v == null || v === '' ? '—' : v)
       .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
   };
+  const tipo = r.tipo || 'Reserva';
+  const preVenda = tipo === 'Pré-venda';
+  const valorTxt = r.valor == null || r.valor === '' ? '' :
+    'R$ ' + Number(r.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   const linhas = [
+    ['Tipo', tipo],
+    [preVenda ? 'Valor da entrada' : 'Arras', valorTxt],
     ['Lote', r.lote],
     ['Cliente', r.nome],
     ['Intermediação', r.intermediacao],
@@ -1017,11 +1023,11 @@ function avisarNovaReserva_(para, r) {
 
   MailApp.sendEmail({
     to: destinos.join(','),
-    subject: 'Nova reserva: lote ' + String(r.lote || '') + ' (Erico Verissimo - Fase 2)',
+    subject: (preVenda ? 'Nova pré-venda' : 'Nova reserva') + ': lote ' + String(r.lote || '') + ' (Erico Verissimo - Fase 2)',
     name: 'Reservas Young',
     htmlBody:
       '<div style="font-family:Arial,sans-serif;font-size:14px;color:#222">' +
-      '<p>Uma nova reserva foi registrada.</p>' +
+      '<p>' + (preVenda ? 'Uma nova pré-venda foi registrada.' : 'Uma nova reserva foi registrada.') + '</p>' +
       '<table style="border-collapse:collapse">' + tabela + '</table>' +
       '<p><a href="https://reservas.youngempreendimentos.com.br" style="color:#fe5009">Abrir o sistema de reservas</a></p>' +
       '</div>'

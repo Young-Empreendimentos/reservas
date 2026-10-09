@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { Lote } from '@/src/data/lotes';
 import {
   gerarArrasPdf,
@@ -8,7 +8,8 @@ import {
   qualificar,
   sugestaoCorretagem,
   sugestaoPrecoCondicoes,
-  VALOR_ARRAS_TEXTO
+  VALOR_ARRAS_TEXTO,
+  valorPorExtenso
 } from '@/src/lib/arras';
 import { db, FUNCAO_ANEXOS, mensagemErro, supabase } from '@/src/lib/supabase';
 import { useAuth } from '@/src/lib/auth';
@@ -43,6 +44,18 @@ const DO_BANCO: Record<string, string> = {
 
 const intermediacoes = INTERMEDIACOES;
 
+// Pré-venda (investidor): valor de entrada informado, comprovante da entrada, sem PDF.
+// Reserva (público): arras fixo de R$ 2.000 e termo de arras em PDF; só a partir de 'inicio_reservas'.
+const TIPO_RESERVA = 'Reserva';
+const TIPO_PRE_VENDA = 'Pré-venda';
+
+// "18.000,50" / "18000.5" -> 18000.5
+function lerValor(txt: string): number {
+  const t = txt.replace(/[^\d,.]/g, '');
+  const n = Number(t.includes(',') ? t.replace(/\./g, '').replace(',', '.') : t);
+  return Number.isFinite(n) ? Math.round(n * 100) / 100 : 0;
+}
+
 const interests = ['Animais de estimação','Automóveis','Casa e decoração','Ciências/Tecnologia','Cinema/Televisão/Jornalismo','Educação/Cultura','Esportes/Fitness/Saúde','Finanças/Economia','Gastronomia/Culinária','Negócios/Empreendedorismo','Política/Relações Públicas','Viagens/Turismo'];
 
 export default function FormularioReserva({
@@ -60,6 +73,19 @@ export default function FormularioReserva({
   const { perfil } = useAuth();
   // Já vem preenchido com a conta logada; o usuário pode trocar.
   const [vinculo] = useState(() => vinculoDoUsuario(perfil));
+  const [tipo, setTipo] = useState('');
+  const [valorEntrada, setValorEntrada] = useState('');
+  const [inicioReservas, setInicioReservas] = useState('');
+  const preVenda = tipo === TIPO_PRE_VENDA;
+
+  // Data em que as reservas do público abrem (configuração no banco).
+  useEffect(() => {
+    db.from('reservas_config').select('valor').eq('chave', 'inicio_reservas').maybeSingle()
+      .then(({ data }) => setInicioReservas(String(data?.valor || '')));
+  }, []);
+  const hoje = new Date().toLocaleDateString('sv-SE', { timeZone: 'America/Sao_Paulo' });
+  const reservasFechadas = !!inicioReservas && hoje < inicioReservas && perfil?.papel !== 'admin';
+  const inicioBR = inicioReservas ? inicioReservas.split('-').reverse().join('/') : '';
 
   const [form, setForm] = useState<Record<string, string>>({
     intermediacao: vinculo.intermediacao,
@@ -237,14 +263,20 @@ export default function FormularioReserva({
     setError('');
 
     try {
+      if (!tipo) throw new Error('Escolha se é Reserva ou Pré-venda.');
+      const entrada = lerValor(valorEntrada);
+      if (preVenda && entrada <= 0) throw new Error('Informe o valor da entrada.');
+
       // 1) Reserva atômica no banco (trava o lote e confere disponibilidade).
       const { data: reservaId, error: erroReserva } = await db.rpc('reservar_lote', {
         p_lote: lote.numero,
         p_dados: {
           ...form,
-          valorArras: VALOR_ARRAS_TEXTO,
-          precoCondicoes,
-          valorCorretagemBeneficiario: corretagem,
+          tipo,
+          valorEntrada: preVenda ? entrada.toFixed(2) : '',
+          valorArras: preVenda ? `Entrada de ${valorPorExtenso(entrada)}` : VALOR_ARRAS_TEXTO,
+          precoCondicoes: preVenda ? '' : precoCondicoes,
+          valorCorretagemBeneficiario: preVenda ? '' : corretagem,
           imovelObjeto: imovelObjeto(lote.numero, lote.metragem),
           interesses: selectedInterests
         }
@@ -259,12 +291,12 @@ export default function FormularioReserva({
         anexos.forEach(([k, f]) => fd.append(k, f));
         const { error: erroAnexos } = await supabase.functions.invoke(FUNCAO_ANEXOS, { body: fd });
         if (erroAnexos) {
-          onSuccess(`Lote ${lote.numero} reservado, mas os anexos não foram enviados (${mensagemErro(erroAnexos)}). Envie-os novamente pela aba de reservas.`);
+          onSuccess(`Lote ${lote.numero} registrado, mas os anexos não foram enviados (${mensagemErro(erroAnexos)}). Envie-os novamente pela aba de reservas.`);
           return;
         }
       }
 
-      onSuccess(`Lote ${lote.numero} reservado com sucesso.`);
+      onSuccess(preVenda ? `Pré-venda do lote ${lote.numero} registrada.` : `Lote ${lote.numero} reservado com sucesso.`);
     } catch (e) {
       setError(mensagemErro(e) || 'Erro ao enviar a reserva.');
     } finally {
@@ -278,7 +310,7 @@ export default function FormularioReserva({
 
         <div className="reservation-header">
           <div>
-            <div className="modal-kicker">Ficha de reserva</div>
+            <div className="modal-kicker">{preVenda ? 'Ficha de pré-venda' : 'Ficha de reserva'}</div>
             <h2 className="modal-title">Lote {lote.numero}</h2>
           </div>
 
@@ -300,6 +332,49 @@ export default function FormularioReserva({
             <h3>Reserva</h3>
 
             <div className="form-grid">
+              <Field label="Tipo" full>
+                <div className="tipo-escolha">
+                  {[TIPO_PRE_VENDA, TIPO_RESERVA].map(t => {
+                    const bloqueado = t === TIPO_RESERVA && reservasFechadas;
+                    return (
+                      <label key={t} className={`tipo-opcao ${tipo === t ? 'ativo' : ''} ${bloqueado ? 'bloqueado' : ''}`}>
+                        <input
+                          type="radio"
+                          name="tipo"
+                          required
+                          disabled={bloqueado}
+                          checked={tipo === t}
+                          onChange={() => setTipo(t)}
+                        />
+                        <span>
+                          <b>{t}</b>
+                          <small>
+                            {t === TIPO_PRE_VENDA
+                              ? 'Investidor comprando o lote: informe o valor da entrada.'
+                              : bloqueado
+                                ? `Abre em ${inicioBR}.`
+                                : 'Público: arras de R$ 2.000 e termo de arras em PDF.'}
+                          </small>
+                        </span>
+                      </label>
+                    );
+                  })}
+                </div>
+              </Field>
+
+              {preVenda && (
+                <Field label="Valor da entrada (R$)">
+                  <input
+                    required
+                    inputMode="decimal"
+                    placeholder="Ex.: 18.000,00"
+                    value={valorEntrada}
+                    onChange={e => setValorEntrada(e.target.value)}
+                  />
+                  {lerValor(valorEntrada) > 0 && <span className="auto-status">{valorPorExtenso(lerValor(valorEntrada))}</span>}
+                </Field>
+              )}
+
               <Field label="Intermediação">
                 <select
                   required
@@ -1050,6 +1125,7 @@ export default function FormularioReserva({
             </div>
           </div>
 
+          {!preVenda && (
           <div className="form-section">
 
             <h3>Termo de arras (Quadro Resumo)</h3>
@@ -1112,6 +1188,7 @@ export default function FormularioReserva({
               do Simulador de Vendas.
             </p>
           </div>
+          )}
 
           <div className="form-section">
 
@@ -1163,7 +1240,7 @@ export default function FormularioReserva({
                 />
               </Field>
 
-              <Field label="Comprovante de pagamento">
+              <Field label={preVenda ? 'Comprovante da entrada' : 'Comprovante de pagamento do arras'}>
                 <input
                   type="file"
                   accept=".pdf,.jpg,.jpeg,.png"
@@ -1189,13 +1266,15 @@ export default function FormularioReserva({
 
           <div className="form-actions">
 
-            <button
-              type="button"
-              className="secondary-button"
-              onClick={gerarPDF}
-            >
-              Gerar PDF
-            </button>
+            {!preVenda && (
+              <button
+                type="button"
+                className="secondary-button"
+                onClick={gerarPDF}
+              >
+                Gerar PDF
+              </button>
+            )}
 
             <button
               type="button"
@@ -1211,8 +1290,10 @@ export default function FormularioReserva({
               disabled={saving}
             >
               {saving
-                ? 'Registrando reserva...'
-                : `Confirmar reserva do lote ${lote.numero}`}
+                ? 'Registrando...'
+                : preVenda
+                  ? `Confirmar pré-venda do lote ${lote.numero}`
+                  : `Confirmar reserva do lote ${lote.numero}`}
             </button>
 
           </div>

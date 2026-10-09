@@ -13,7 +13,8 @@ const situacaoDe = (r: Reserva) => (r.situacao === 'Cancelada' ? 'Cancelada' : '
 
 // Todas as colunas da reserva (exportação CSV e detalhe).
 const COLUNAS: [string, string][] = [
-  ['id', 'Nº'], ['criado_em', 'Data'], ['lote', 'Lote'], ['situacao', 'Situação'],
+  ['id', 'Nº'], ['criado_em', 'Data'], ['lote', 'Lote'], ['tipo', 'Tipo'], ['situacao', 'Situação'],
+  ['valor_arras', 'Valor pago (R$)'],
   ['intermediacao', 'Intermediação'], ['responsavel_reserva', 'Responsável'], ['criado_por_email', 'Criado por'],
   ['nome', 'Nome'], ['cpf', 'CPF'], ['email', 'E-mail'], ['telefone', 'Telefone'],
   ['escolaridade', 'Escolaridade'], ['nacionalidade', 'Nacionalidade'], ['sexo', 'Sexo'],
@@ -39,7 +40,7 @@ const COLUNAS: [string, string][] = [
 
 // Colunas que aparecem por padrão (o usuário pode escolher outras no botão "Colunas").
 const PADRAO: [string, string][] = [
-  ['criado_em', 'Data'], ['lote', 'Lote'], ['nome', 'Comprador'], ['cpf', 'CPF'], ['telefone', 'Telefone'],
+  ['criado_em', 'Data'], ['lote', 'Lote'], ['tipo', 'Tipo'], ['nome', 'Comprador'], ['cpf', 'CPF'], ['telefone', 'Telefone'],
   ['responsavel_reserva', 'Responsável'], ['intermediacao', 'Intermediação'], ['situacao', 'Situação'], ['criado_por_email', 'Criado por'],
 ];
 
@@ -49,6 +50,7 @@ function texto(r: Reserva, col: string): string {
   if (Array.isArray(v)) return v.join(', ');
   if (col === 'situacao') return v === 'Cancelada' ? 'Cancelada' : 'Ativa';
   if (col === 'criado_em') return new Date(String(v)).toLocaleString('pt-BR');
+  if (col === 'valor_arras') return Number(v).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   if (/^data_/.test(col)) {
     const m = String(v).match(/^(\d{4})-(\d{2})-(\d{2})/);
     return m ? `${m[3]}/${m[2]}/${m[1]}` : String(v);
@@ -58,7 +60,7 @@ function texto(r: Reserva, col: string): string {
 
 // Campos que o admin pode editar no detalhe (lote, situação, autor e anexos têm fluxo próprio).
 const NAO_EDITAVEIS = new Set([
-  'id', 'criado_em', 'lote', 'situacao', 'criado_por_email',
+  'id', 'criado_em', 'lote', 'tipo', 'valor_arras', 'situacao', 'criado_por_email',
   'pasta_anexos', 'documento_titular', 'documento_segundo_comprador', 'comprovante_residencia', 'comprovante_pagamento',
 ]);
 const LONGOS = new Set(['observacoes', 'imovel_objeto', 'valor_arras_texto', 'preco_condicoes', 'valor_corretagem_beneficiario']);
@@ -104,6 +106,7 @@ export default function ReservasPainel() {
   const [busca, setBusca] = useState('');
   const [fSituacao, setFSituacao] = useState('');
   const [fResponsavel, setFResponsavel] = useState('');
+  const [fTipo, setFTipo] = useState('');
   const [ordem, setOrdem] = useState<{ col: string; asc: boolean }>({ col: 'criado_em', asc: false });
   const [detalhe, setDetalhe] = useState<Reserva | null>(null);
   const [visao, setVisao] = useState<'dashboard' | 'tabela'>('dashboard');
@@ -170,6 +173,7 @@ export default function ReservasPainel() {
     const q = busca.trim().toLowerCase();
     const lista = reservas.filter(r =>
       (!fSituacao || situacaoDe(r) === fSituacao) &&
+      (!fTipo || (r.tipo || 'Reserva') === fTipo) &&
       (!dataDe || String(r.criado_em).slice(0, 10) >= dataDe) &&
       (!dataAte || String(r.criado_em).slice(0, 10) <= dataAte) &&
       (!fResponsavel || r.responsavel_reserva === fResponsavel) &&
@@ -184,7 +188,7 @@ export default function ReservasPainel() {
       const cmp = !isNaN(na) && !isNaN(nb) ? na - nb : String(va).localeCompare(String(vb), 'pt-BR');
       return asc ? cmp : -cmp;
     });
-  }, [reservas, busca, fSituacao, fResponsavel, dataDe, dataAte, ordem]);
+  }, [reservas, busca, fSituacao, fTipo, fResponsavel, dataDe, dataAte, ordem]);
 
 
 
@@ -285,6 +289,11 @@ export default function ReservasPainel() {
           <select value={fSituacao} onChange={e => setFSituacao(e.target.value)}>
             <option value="">Todas as situações</option>
             {SITUACOES.map(s => <option key={s}>{s}</option>)}
+          </select>
+          <select value={fTipo} onChange={e => setFTipo(e.target.value)}>
+            <option value="">Pré-vendas e reservas</option>
+            <option>Pré-venda</option>
+            <option>Reserva</option>
           </select>
           <select value={fResponsavel} onChange={e => setFResponsavel(e.target.value)}>
             <option value="">Todos os responsáveis</option>

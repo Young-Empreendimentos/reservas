@@ -110,10 +110,11 @@ export default function Dashboard({ reservas, lotes }: { reservas: Reserva[]; lo
   return (
     <div className="dash-looker">
       <div className="scorecards">
-        <Score titulo="Reservas ativas" valor={ativas.length} />
+        <Score titulo="Pré-vendas" valor={ativas.filter(r => r.tipo === 'Pré-venda').length} />
+        <Score titulo="Reservas" valor={ativas.filter(r => r.tipo !== 'Pré-venda').length} />
         <Score titulo="Canceladas" valor={canceladas} />
         <Score titulo="Lotes disponíveis" valor={lotes.disponivel} />
-        <Score titulo="Lotes reservados" valor={lotes.reservado} />
+        <Score titulo="Lotes ocupados" valor={lotes.reservado} />
         <Score titulo="Ocupação dos lotes à venda" valor={aVenda ? `${Math.round((lotes.reservado / aVenda) * 100)}%` : '—'} />
       </div>
 
