@@ -1,4 +1,16 @@
-import { createClient } from '@supabase/supabase-js';
+import { createBrowserClient } from '@supabase/ssr';
+
+// SSO da Young (02/10/2026): sessão em COOKIE no domínio pai .youngempreendimentos.com.br
+// (@supabase/ssr), e não no localStorage — logar em qualquer sistema vale em todos.
+// Em localhost o cookie fica só no host local. Regra: signOut SEMPRE com { scope: 'local' }.
+const YOUNG_DOMAIN = 'youngempreendimentos.com.br'
+const _host = typeof window !== 'undefined' ? window.location.hostname : ''
+const SSO_COOKIE_OPTIONS = {
+  domain: _host === YOUNG_DOMAIN || _host.endsWith('.' + YOUNG_DOMAIN) ? '.' + YOUNG_DOMAIN : undefined,
+  path: '/',
+  sameSite: 'lax' as const,
+  secure: typeof window !== 'undefined' ? window.location.protocol === 'https:' : true,
+}
 
 // Projeto young-workspace. A chave publicável foi feita para ficar no navegador:
 // quem protege os dados são as regras de acesso (RLS) das tabelas do schema marketing.
@@ -6,7 +18,8 @@ import { createClient } from '@supabase/supabase-js';
 export const SUPABASE_URL = 'https://vvtympzatclvjaqucebr.supabase.co';
 export const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_VRzI66cuw15hnqnoPKe27A_UmUbuhPC';
 
-export const supabase = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+export const supabase = createBrowserClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+  cookieOptions: SSO_COOKIE_OPTIONS,
   auth: {
     persistSession: true,
     autoRefreshToken: true,

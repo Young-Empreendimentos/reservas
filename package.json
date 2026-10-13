@@ -16,7 +16,8 @@
     "pdf-lib": "^1.17.1",
     "react": "19.2.0",
     "react-dom": "19.2.0",
-    "recharts": "^2.15.4"
+    "recharts": "^2.15.4",
+    "@supabase/ssr": "^0.12.7"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
