@@ -356,16 +356,20 @@ export async function gerarArrasPdf(d: DadosArras): Promise<Uint8Array> {
   paragrafo([B('Parágrafo Primeiro:'), N(' As notificações e comunicações que envolvam situações sujeitas a prazos serão consideradas tempestivas desde que realizadas conforme disposto no caput e alíneas desta cláusula, ainda que, neste caso, sejam efetivamente recebidas/entregues à outra parte após o escoamento do prazo.')]);
   paragrafo([B('Parágrafo Segundo:'), N(' As Partes obrigam-se, uma frente à outra, a comunicar formalmente toda e qualquer alteração de seu endereço, sob pena de considerar-se válida e eficaz qualquer comunicação, intimação ou notificação feita nos endereços antes indicados.')]);
   paragrafo([B('CLÁUSULA SEXTA:'), N(' Os direitos e as obrigações decorrentes deste instrumento não poderão ser cedidos pela '), B('OUTORGADA'), N(' a terceiros, exceto com a anuência da '), B('OUTORGANTE'), N('.')], { antes: 8 });
-  paragrafo([B('CLÁUSULA SÉTIMA:'), N(' O presente instrumento é celebrado em caráter irrevogável e irretratável, sendo obrigatório às Partes, seus herdeiros ou sucessores a qualquer título.')], { antes: 8 });
-  paragrafo([B('CLÁUSULA OITAVA:'), N(' As Partes elegem o Foro da Comarca de Cruz Alta/RS, como o competente para dirimir qualquer conflito decorrente e/ou relativo ao presente Instrumento.')], { antes: 8 });
-  // O fecho vai junto com as assinaturas (nunca uma página só de assinaturas).
+  // As duas últimas cláusulas + fecho + assinaturas ficam juntos na mesma página
+  // (se não couber, tudo vai para a página seguinte; a página de assinaturas nunca fica isolada).
+  const alturaPar = (segs: Seg[], antes = 5, size = 9) => antes + quebrar(segs, size, LARG).length * size * 1.32;
+  const c7: Seg[] = [B('CLÁUSULA SÉTIMA:'), N(' O presente instrumento é celebrado em caráter irrevogável e irretratável, sendo obrigatório às Partes, seus herdeiros ou sucessores a qualquer título.')];
+  const c8: Seg[] = [B('CLÁUSULA OITAVA:'), N(' As Partes elegem o Foro da Comarca de Cruz Alta/RS, como o competente para dirimir qualquer conflito decorrente e/ou relativo ao presente Instrumento.')];
+  const fecho: Seg[] = [N('E, por estarem assim justos e contratados, celebram o presente Instrumento, em 02 (duas) vias de igual teor e forma, na presença das testemunhas signatárias.')];
   const nomes = d.nomesOutorgados.filter(Boolean).length ? d.nomesOutorgados.filter(Boolean) : [''];
   const altura = 26 + Math.max(nomes.length, 1) * 34 + 56;
-  garantir(altura + 16 + 34 + 30);
-  paragrafo([N('E, por estarem assim justos e contratados, celebram o presente Instrumento, em 02 (duas) vias de igual teor e forma, na presença das testemunhas signatárias.')], { antes: 8 });
+  garantir(alturaPar(c7, 8) + alturaPar(c8, 8) + alturaPar(fecho, 8) + 12 + 12 + altura + 16);
+  paragrafo(c7, { antes: 8 });
+  paragrafo(c8, { antes: 8 });
+  paragrafo(fecho, { antes: 8 });
 
   // Assinaturas (bloco inteiro na mesma página)
-  garantir(altura + 16);
   paragrafo([N(`Cruz Alta/RS, ${dataPorExtenso()}.`)], { antes: 12, justificar: false });
   y -= 26;
 
