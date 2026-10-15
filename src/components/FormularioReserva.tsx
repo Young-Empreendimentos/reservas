@@ -21,6 +21,7 @@ import {
   RESPONSAVEIS_YOUNG,
   vinculoDoUsuario
 } from '@/src/lib/responsaveis';
+import { simular, textoCorretagem, textoPrecoCondicoes, type Corretor } from '@/src/lib/simulacao';
 
 // Campos da reserva (snake_case no banco) -> campos do formulário.
 const DO_BANCO: Record<string, string> = {
@@ -172,8 +173,25 @@ export default function FormularioReserva({
   // Editável; se a pessoa mexer, vale o texto dela. Depois virá do Simulador de Vendas.
   const [editado, setEditado] = useState({ preco: false, corretagem: false });
   const temIntermediacao = form.intermediacao === INTERMEDIACAO_PARCEIRO;
-  const autoPreco = sugestaoPrecoCondicoes(lote.preco, form.formaPagamento);
-  const autoCorretagem = sugestaoCorretagem(temIntermediacao, form.responsavelReserva, lote.preco);
+  // Simulação igual à do Simulador de Vendas (preço da tabela do Simulador, sem juros).
+  const [simEntrada, setSimEntrada] = useState('');
+  const [simParcelas, setSimParcelas] = useState('');
+  const [corretor, setCorretor] = useState<Corretor | null>(null);
+  useEffect(() => {
+    if (!temIntermediacao || !form.responsavelReserva) { setCorretor(null); return; }
+    let vivo = true;
+    db.rpc('reservas_corretor', { p_nome: form.responsavelReserva })
+      .then(({ data }) => { if (vivo) setCorretor((data as Corretor) || null); });
+    return () => { vivo = false; };
+  }, [temIntermediacao, form.responsavelReserva]);
+  const maxParcelas = preVenda ? 60 : 180;
+  const nParcelas = Math.min(maxParcelas, Math.max(0, Math.floor(Number(simParcelas) || 0)));
+  const entradaSim = lerValor(simEntrada);
+  const sim = lote.preco ? simular(Number(lote.preco), entradaSim, nParcelas, temIntermediacao) : null;
+  const autoPreco = sim ? textoPrecoCondicoes(sim, entradaSim, nParcelas) : sugestaoPrecoCondicoes(lote.preco, form.formaPagamento);
+  const autoCorretagem = temIntermediacao && lote.preco
+    ? textoCorretagem(Number(lote.preco) * 0.05, corretor, form.responsavelReserva)
+    : sugestaoCorretagem(temIntermediacao, form.responsavelReserva, lote.preco);
   const precoCondicoes = editado.preco ? form.precoCondicoes : autoPreco;
   const corretagem = editado.corretagem ? form.valorCorretagemBeneficiario : autoCorretagem;
 
@@ -1143,6 +1161,14 @@ export default function FormularioReserva({
 
               <Field label="Valor do Arras" full>
                 <textarea readOnly rows={2} value={VALOR_ARRAS_TEXTO} />
+              </Field>
+
+              <Field label="Entrada (R$)">
+                <input inputMode="decimal" placeholder="Ex.: 10.000,00" value={simEntrada} onChange={e => setSimEntrada(e.target.value)} />
+              </Field>
+              <Field label={`Nº de parcelas (até ${maxParcelas})`}>
+                <input type="number" min={1} max={maxParcelas} value={simParcelas} onChange={e => setSimParcelas(e.target.value)} />
+                {sim && <span className="auto-status">{nParcelas}x de {valorPorExtenso(sim.parcela)}</span>}
               </Field>
 
               <Field label="Preço e Condições" full>
