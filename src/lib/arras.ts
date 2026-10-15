@@ -119,6 +119,8 @@ export type Pessoa = {
   profissao: string;
   cpf: string;
   documento: string;
+  docTipo?: string;
+  semUniaoEstavel?: boolean; // solteiro(a) sem 2º comprador: declara que não convive em união estável
   orgaoExpedidor: string;
   dataExpedicao: string; // AAAA-MM-DD
   email: string;
@@ -161,12 +163,13 @@ export function qualificar(p: Pessoa): string {
       ec += ` sob o regime de ${regime.toLowerCase()}`;
     }
     partes.push(ec);
+    if (/^solteir/.test(base) && p.semUniaoEstavel) partes.push('declara para os devidos fins de direito que não convive em união estável com nenhuma pessoa');
   }
 
   if (p.profissao) partes.push(p.profissao.toLowerCase());
   if (p.cpf) partes.push(`${g('inscrito', 'inscrita', 'inscrito(a)')} no CPF sob nº ${p.cpf}`);
   if (p.documento) {
-    let doc = `documento de identidade nº ${p.documento}`;
+    let doc = `${p.docTipo || 'documento de identidade'} nº ${p.documento}`;
     if (p.orgaoExpedidor) doc += `, expedido pelo(a) ${p.orgaoExpedidor}`;
     if (p.dataExpedicao) doc += ` em ${dataBR(p.dataExpedicao)}`;
     partes.push(doc);

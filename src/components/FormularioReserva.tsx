@@ -22,7 +22,7 @@ import {
   vinculoDoUsuario
 } from '@/src/lib/responsaveis';
 import { comAtual, useParceiros } from '@/src/lib/parceiros';
-import { simular, simularAvista, textoAvista, textoCorretagem, textoPrecoCondicoes, type Corretor } from '@/src/lib/simulacao';
+import { simular, simularAvista, textoAvista, textoCorretagem, textoPrecoCondicoes, type Corretor, type Pagamento } from '@/src/lib/simulacao';
 
 // Campos da reserva (snake_case no banco) -> campos do formulário.
 const DO_BANCO: Record<string, string> = {
@@ -104,9 +104,12 @@ export default function FormularioReserva({
     dataNascimento: '',
     cpf: '',
     rgCnh: '',
+    docTipo: 'RG',
     orgaoExpedidor: '',
     dataExpedicao: '',
     endereco: '',
+    bairro: '',
+    cep: '',
     cidade: 'Cruz Alta/RS',
     email: '',
     telefone: '',
@@ -178,6 +181,11 @@ export default function FormularioReserva({
   // Simulação igual à do Simulador de Vendas (preço da tabela do Simulador, sem juros).
   const parceiros = useParceiros();
   const [aVista, setAVista] = useState(false);
+  const hojeISO = new Date().toLocaleDateString('sv-SE', { timeZone: 'America/Sao_Paulo' });
+  const [dataEntrada, setDataEntrada] = useState(hojeISO);
+  const [dataPrimeira, setDataPrimeira] = useState(() => { const d = new Date(hojeISO + 'T12:00:00'); d.setMonth(d.getMonth() + 1); return d.toISOString().slice(0, 10); });
+  const [bancoEmpresa, setBancoEmpresa] = useState('');
+  useEffect(() => { db.rpc('reservas_dados_bancarios').then(({ data }) => setBancoEmpresa(String(data || ''))); }, []);
   const [simEntrada, setSimEntrada] = useState('');
   const [simParcelas, setSimParcelas] = useState('');
   const [corretor, setCorretor] = useState<Corretor | null>(null);
@@ -192,9 +200,8 @@ export default function FormularioReserva({
   const nParcelas = Math.min(maxParcelas, Math.max(0, Math.floor(Number(simParcelas) || 0)));
   const entradaSim = lerValor(simEntrada);
   const sim = !lote.preco ? null : aVista ? simularAvista(Number(lote.preco), temIntermediacao) : simular(Number(lote.preco), entradaSim, nParcelas, temIntermediacao);
-  const autoPreco = sim ? (aVista ? textoAvista(sim) : textoPrecoCondicoes(sim, entradaSim, nParcelas)) : sugestaoPrecoCondicoes(lote.preco, form.formaPagamento);
   // Como no gerador de contratos: o que faltar no cadastro do corretor é preenchido à mão (só nesta reserva).
-  const CAMPOS_CORRETOR: [keyof Corretor, string][] = [['cpf', 'CPF/CNPJ do corretor'], ['creci', 'CRECI'], ['endereco', 'Endereço'], ['bairro', 'Bairro'], ['cidade', 'Cidade'], ['uf', 'UF'], ['cep', 'CEP'], ['telefone', 'Telefone'], ['email', 'E-mail']];
+  const CAMPOS_CORRETOR: [keyof Corretor, string][] = [['cpf', 'CPF/CNPJ do corretor'], ['creci', 'CRECI'], ['endereco', 'Endereço'], ['bairro', 'Bairro'], ['cidade', 'Cidade'], ['uf', 'UF'], ['cep', 'CEP'], ['telefone', 'Telefone'], ['email', 'E-mail'], ['dados_bancarios', 'Dados bancários / Pix do corretor']];
   const [corretorManual, setCorretorManual] = useState<Partial<Corretor>>({});
   const faltandoCorretor = temIntermediacao && form.responsavelReserva
     ? CAMPOS_CORRETOR.filter(([k]) => !(k === 'cpf' ? (corretor?.cpf || corretor?.cnpj) : corretor?.[k]))
@@ -205,12 +212,18 @@ export default function FormularioReserva({
   const autoCorretagem = temIntermediacao
     ? textoCorretagem(lote.preco ? Number(lote.preco) * 0.05 : 0, corretorFinal, form.responsavelReserva)
     : sugestaoCorretagem(temIntermediacao, form.responsavelReserva, lote.preco);
+  const pagamento: Pagamento = { dataEntrada, dataPrimeira, bancoEmpresa, bancoCorretor: String(corretorFinal?.dados_bancarios || '') };
+  const autoPreco = sim ? (aVista ? textoAvista(sim, pagamento) : textoPrecoCondicoes(sim, entradaSim, nParcelas, pagamento)) : sugestaoPrecoCondicoes(lote.preco, form.formaPagamento);
   const precoCondicoes = editado.preco ? form.precoCondicoes : autoPreco;
   const corretagem = editado.corretagem ? form.valorCorretagemBeneficiario : autoCorretagem;
 
   function editarCampo(campo: 'preco' | 'corretagem', key: string, value: string) {
     setField(key, value);
     setEditado(prev => ({ ...prev, [campo]: true }));
+  }
+
+  function enderecoCompleto() {
+    return [form.endereco.trim(), form.bairro.trim() && `bairro ${form.bairro.trim()}`, form.cep.trim() && `CEP ${form.cep.trim()}`].filter(Boolean).join(', ');
   }
 
   function camposArras() {
@@ -228,7 +241,9 @@ export default function FormularioReserva({
       dataExpedicao: form.dataExpedicao,
       email: form.email,
       telefone: form.telefone,
-      endereco: form.endereco,
+      endereco: enderecoCompleto(),
+      docTipo: form.docTipo,
+      semUniaoEstavel: !(secondary && form.nomeSecundario.trim()),
       cidade: form.cidade
     });
 
@@ -316,6 +331,8 @@ export default function FormularioReserva({
           valorArras: preVenda ? `Entrada de ${valorPorExtenso(entrada)}` : VALOR_ARRAS_TEXTO,
           precoCondicoes: preVenda ? '' : precoCondicoes,
           valorCorretagemBeneficiario: preVenda ? '' : corretagem,
+          endereco: enderecoCompleto(),
+          rgCnh: form.rgCnh ? `${form.docTipo} ${form.rgCnh}` : '',
           imovelObjeto: imovelObjeto(lote.numero, lote.metragem),
           interesses: selectedInterests
         }
@@ -620,6 +637,13 @@ export default function FormularioReserva({
                 />
               </Field>
 
+              <Field label="Tipo de documento">
+                <select value={form.docTipo} onChange={e => setField('docTipo', e.target.value)}>
+                  <option>RG</option>
+                  <option>CNH</option>
+                </select>
+              </Field>
+
               <Field label="RG ou CNH">
                 <input
                   required
@@ -657,7 +681,7 @@ export default function FormularioReserva({
                 />
               </Field>
 
-              <Field label="Endereço completo" full>
+              <Field label="Endereço (rua, nº, complemento)" full>
                 <input
                   required
                   value={form.endereco}
@@ -668,6 +692,14 @@ export default function FormularioReserva({
                     )
                   }
                 />
+              </Field>
+
+              <Field label="Bairro">
+                <input required value={form.bairro} onChange={e => setField('bairro', e.target.value)} />
+              </Field>
+
+              <Field label="CEP">
+                <input required inputMode="numeric" placeholder="00000-000" value={form.cep} onChange={e => setField('cep', e.target.value)} />
               </Field>
 
               <Field label="Residência atual - Cidade">
@@ -1191,6 +1223,14 @@ export default function FormularioReserva({
                 </select>
                 {aVista && sim && <span className="auto-status">Total à vista: {valorPorExtenso(sim.total)}</span>}
               </Field>
+              <Field label={aVista ? 'Data do pagamento' : 'Data da entrada'}>
+                <input type="date" value={dataEntrada} onChange={e => setDataEntrada(e.target.value)} />
+              </Field>
+              {!aVista && (
+                <Field label="Vencimento da 1ª parcela">
+                  <input type="date" value={dataPrimeira} onChange={e => setDataPrimeira(e.target.value)} />
+                </Field>
+              )}
               {!aVista && (
                 <>
                   <Field label="Entrada (R$)">
