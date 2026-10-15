@@ -21,6 +21,7 @@ import {
   RESPONSAVEIS_YOUNG,
   vinculoDoUsuario
 } from '@/src/lib/responsaveis';
+import { comAtual, useParceiros } from '@/src/lib/parceiros';
 import { simular, textoCorretagem, textoPrecoCondicoes, type Corretor } from '@/src/lib/simulacao';
 
 // Campos da reserva (snake_case no banco) -> campos do formulário.
@@ -174,6 +175,7 @@ export default function FormularioReserva({
   const [editado, setEditado] = useState({ preco: false, corretagem: false });
   const temIntermediacao = form.intermediacao === INTERMEDIACAO_PARCEIRO;
   // Simulação igual à do Simulador de Vendas (preço da tabela do Simulador, sem juros).
+  const parceiros = useParceiros();
   const [simEntrada, setSimEntrada] = useState('');
   const [simParcelas, setSimParcelas] = useState('');
   const [corretor, setCorretor] = useState<Corretor | null>(null);
@@ -427,7 +429,7 @@ export default function FormularioReserva({
                   {(form.intermediacao === INTERMEDIACAO_YOUNG
                     ? RESPONSAVEIS_YOUNG
                     : form.intermediacao === INTERMEDIACAO_PARCEIRO
-                      ? RESPONSAVEIS_PARCEIROS
+                      ? comAtual(parceiros, form.responsavelReserva)
                       : []
                   ).map(x => (
                     <option key={x}>{x}</option>

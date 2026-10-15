@@ -3,7 +3,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useAuth } from '@/src/lib/auth';
 import { db, mensagemErro, type Perfil } from '@/src/lib/supabase';
-import { RESPONSAVEIS_PARCEIROS, RESPONSAVEIS_YOUNG, vinculoDoUsuario } from '@/src/lib/responsaveis';
+import { RESPONSAVEIS_YOUNG, vinculoDoUsuario } from '@/src/lib/responsaveis';
+import { comAtual, useParceiros } from '@/src/lib/parceiros';
 
 const ROTULO_STATUS: Record<Perfil['status'], string> = {
   pendente: 'Aguardando',
@@ -13,6 +14,7 @@ const ROTULO_STATUS: Record<Perfil['status'], string> = {
 
 export default function UsuariosPainel() {
   const { perfil } = useAuth();
+  const parceiros = useParceiros();
   const [usuarios, setUsuarios] = useState<Perfil[]>([]);
   const [erro, setErro] = useState('');
 
@@ -109,7 +111,7 @@ export default function UsuariosPainel() {
                   {RESPONSAVEIS_YOUNG.map(r => <option key={r}>{r}</option>)}
                 </optgroup>
                 <optgroup label="Corretor parceiro / Imobiliária">
-                  {RESPONSAVEIS_PARCEIROS.map(r => <option key={r}>{r}</option>)}
+                  {parceiros.map(r => <option key={r}>{r}</option>)}
                 </optgroup>
               </select>
             </label>
@@ -160,7 +162,7 @@ export default function UsuariosPainel() {
                           {RESPONSAVEIS_YOUNG.map(r => <option key={r}>{r}</option>)}
                         </optgroup>
                         <optgroup label="Corretor parceiro / Imobiliária">
-                          {RESPONSAVEIS_PARCEIROS.map(r => <option key={r}>{r}</option>)}
+                          {comAtual(parceiros, u.responsavel || '').map(r => <option key={r}>{r}</option>)}
                         </optgroup>
                       </select>
                     </td>
