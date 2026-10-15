@@ -43,7 +43,10 @@ export default function MapaLoteamento() {
     try {
       const { data, error } = await db.from('reservas_lotes').select('numero,area,matricula,preco,status');
       if (error) throw error;
-      setLotes(mergeLotes((data || []) as LoteDb[]));
+      // Preço vem da tabela do Simulador de Vendas (marketing.reservas_precos lê comercial_tabela_precos).
+      const { data: precos } = await db.rpc('reservas_precos');
+      const precoPorLote = new Map(((precos || []) as { numero: string; preco: number }[]).map(p => [String(p.numero), Number(p.preco)]));
+      setLotes(mergeLotes(((data || []) as LoteDb[]).map(l => ({ ...l, preco: precoPorLote.get(String(l.numero)) ?? null }))));
       setOnline(true);
       setLastUpdate(new Date().toISOString());
     } catch (e) {
