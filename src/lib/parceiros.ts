@@ -16,7 +16,8 @@ export function useParceiros(): string[] {
       if (error || !data?.length) return;
       const nomes = (data as { nome: string }[]).map(d => d.nome).filter(Boolean);
       const cay = nomes.filter(n => /^cay\b/i.test(n));
-      cache = [...cay, ...nomes.filter(n => !/^cay\b/i.test(n))];
+      if (!cay.length) return;
+      cache = cay;   // só os corretores do Erico ("CAY - ...")
       setLista(cache);
     });
   }, []);
