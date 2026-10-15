@@ -22,7 +22,7 @@ import {
   vinculoDoUsuario
 } from '@/src/lib/responsaveis';
 import { comAtual, useParceiros } from '@/src/lib/parceiros';
-import { simular, textoCorretagem, textoPrecoCondicoes, type Corretor } from '@/src/lib/simulacao';
+import { simular, simularAvista, textoAvista, textoCorretagem, textoPrecoCondicoes, type Corretor } from '@/src/lib/simulacao';
 
 // Campos da reserva (snake_case no banco) -> campos do formulário.
 const DO_BANCO: Record<string, string> = {
@@ -177,6 +177,7 @@ export default function FormularioReserva({
   const temIntermediacao = form.intermediacao === INTERMEDIACAO_PARCEIRO;
   // Simulação igual à do Simulador de Vendas (preço da tabela do Simulador, sem juros).
   const parceiros = useParceiros();
+  const [aVista, setAVista] = useState(false);
   const [simEntrada, setSimEntrada] = useState('');
   const [simParcelas, setSimParcelas] = useState('');
   const [corretor, setCorretor] = useState<Corretor | null>(null);
@@ -190,8 +191,8 @@ export default function FormularioReserva({
   const maxParcelas = preVenda ? 60 : 180;
   const nParcelas = Math.min(maxParcelas, Math.max(0, Math.floor(Number(simParcelas) || 0)));
   const entradaSim = lerValor(simEntrada);
-  const sim = lote.preco ? simular(Number(lote.preco), entradaSim, nParcelas, temIntermediacao) : null;
-  const autoPreco = sim ? textoPrecoCondicoes(sim, entradaSim, nParcelas) : sugestaoPrecoCondicoes(lote.preco, form.formaPagamento);
+  const sim = !lote.preco ? null : aVista ? simularAvista(Number(lote.preco), temIntermediacao) : simular(Number(lote.preco), entradaSim, nParcelas, temIntermediacao);
+  const autoPreco = sim ? (aVista ? textoAvista(sim) : textoPrecoCondicoes(sim, entradaSim, nParcelas)) : sugestaoPrecoCondicoes(lote.preco, form.formaPagamento);
   // Como no gerador de contratos: o que faltar no cadastro do corretor é preenchido à mão (só nesta reserva).
   const CAMPOS_CORRETOR: [keyof Corretor, string][] = [['cpf', 'CPF/CNPJ do corretor'], ['creci', 'CRECI'], ['endereco', 'Endereço'], ['bairro', 'Bairro'], ['cidade', 'Cidade'], ['uf', 'UF'], ['cep', 'CEP'], ['telefone', 'Telefone'], ['email', 'E-mail']];
   const [corretorManual, setCorretorManual] = useState<Partial<Corretor>>({});
@@ -1183,13 +1184,24 @@ export default function FormularioReserva({
                 <textarea readOnly rows={2} value={VALOR_ARRAS_TEXTO} />
               </Field>
 
-              <Field label="Entrada (R$)">
-                <input inputMode="decimal" placeholder="Ex.: 10.000,00" value={simEntrada} onChange={e => setSimEntrada(e.target.value)} />
+              <Field label="Forma de pagamento">
+                <select value={aVista ? 'avista' : 'parcelado'} onChange={e => setAVista(e.target.value === 'avista')}>
+                  <option value="parcelado">Entrada + parcelas</option>
+                  <option value="avista">À vista</option>
+                </select>
+                {aVista && sim && <span className="auto-status">Total à vista: {valorPorExtenso(sim.total)}</span>}
               </Field>
-              <Field label={`Nº de parcelas (até ${maxParcelas})`}>
-                <input type="number" min={1} max={maxParcelas} value={simParcelas} onChange={e => setSimParcelas(e.target.value)} />
-                {sim && <span className="auto-status">{nParcelas}x de {valorPorExtenso(sim.parcela)}</span>}
-              </Field>
+              {!aVista && (
+                <>
+                  <Field label="Entrada (R$)">
+                    <input inputMode="decimal" placeholder="Ex.: 10.000,00" value={simEntrada} onChange={e => setSimEntrada(e.target.value)} />
+                  </Field>
+                  <Field label={`Nº de parcelas (até ${maxParcelas})`}>
+                    <input type="number" min={1} max={maxParcelas} value={simParcelas} onChange={e => setSimParcelas(e.target.value)} />
+                    {sim && <span className="auto-status">{nParcelas}x de {valorPorExtenso(sim.parcela)}</span>}
+                  </Field>
+                </>
+              )}
 
               <Field label="Preço e Condições" full>
                 <textarea

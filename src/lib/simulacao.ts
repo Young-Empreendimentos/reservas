@@ -31,6 +31,21 @@ export function textoPrecoCondicoes(s: Simulacao, entrada: number, parcelas: num
   return `Preço total de ${valorPorExtenso(s.total)} (${partes.join('; ')}), pago com entrada de ${valorPorExtenso(entrada)} e saldo de ${valorPorExtenso(s.saldo)} em ${parcelas} parcelas mensais e consecutivas de ${valorPorExtenso(s.parcela)}, sem juros, corrigidas mensalmente pelo IGP-M/FGV.`;
 }
 
+// À vista: preço da tabela + ITBI (2% do preço) + cartório R$ 2.500; honorários de 5% dentro do total.
+export function simularAvista(preco: number, comCorretor: boolean): Simulacao | null {
+  if (!(preco > 0)) return null;
+  const itbiCartorio = r2(preco * ITBI + CARTORIO);
+  const honorarios = comCorretor ? r2(preco * 0.05) : 0;
+  const total = r2(preco + itbiCartorio);
+  return { parcela: 0, saldo: 0, total, itbiCartorio, honorarios, valorImovel: r2(total - honorarios - itbiCartorio) };
+}
+
+export function textoAvista(s: Simulacao): string {
+  const partes = [`valor do imóvel de ${valorPorExtenso(s.valorImovel)}`, `custos de ITBI e registro de ${valorPorExtenso(s.itbiCartorio)}`];
+  if (s.honorarios > 0) partes.push(`honorários de intermediação imobiliária de ${valorPorExtenso(s.honorarios)}`);
+  return `Preço total de ${valorPorExtenso(s.total)} (${partes.join('; ')}), pago à vista.`;
+}
+
 export type Corretor = { nome?: string; cpf?: string; cnpj?: string; creci?: string; endereco?: string; bairro?: string; cidade?: string; uf?: string; cep?: string; telefone?: string; email?: string };
 
 export function textoCorretagem(honorarios: number, c: Corretor | null, nomeResponsavel: string): string {
