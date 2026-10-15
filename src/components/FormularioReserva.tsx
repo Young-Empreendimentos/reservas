@@ -321,7 +321,7 @@ export default function FormularioReserva({
 
     try {
       if (!tipo) throw new Error('Escolha se é Reserva ou Pré-venda.');
-      const entrada = lerValor(valorEntrada);
+      const entrada = aVista ? (sim?.total ?? 0) : entradaSim;
       if (preVenda && entrada <= 0) throw new Error('Informe o valor da entrada.');
 
       // 1) Reserva atômica no banco (trava o lote e confere disponibilidade).
@@ -331,9 +331,9 @@ export default function FormularioReserva({
           ...form,
           tipo,
           valorEntrada: preVenda ? entrada.toFixed(2) : '',
-          valorArras: preVenda ? `Entrada de ${valorPorExtenso(entrada)}` : VALOR_ARRAS_TEXTO,
-          precoCondicoes: preVenda ? '' : precoCondicoes,
-          valorCorretagemBeneficiario: preVenda ? '' : corretagem,
+          valorArras: preVenda ? (aVista ? `Pagamento à vista de ${valorPorExtenso(entrada)}` : `Entrada de ${valorPorExtenso(entrada)}`) : VALOR_ARRAS_TEXTO,
+          precoCondicoes,
+          valorCorretagemBeneficiario: corretagem,
           endereco: enderecoCompleto(),
           rgCnh: form.rgCnh ? `${form.docTipo} ${form.rgCnh}` : '',
           imovelObjeto: imovelObjeto(lote.numero, lote.metragem),
@@ -423,16 +423,26 @@ export default function FormularioReserva({
               </Field>
 
               {preVenda && (
-                <Field label="Valor da entrada (R$)">
-                  <input
-                    required
-                    inputMode="decimal"
-                    placeholder="Ex.: 18.000,00"
-                    value={valorEntrada}
-                    onChange={e => setValorEntrada(e.target.value)}
-                  />
-                  {lerValor(valorEntrada) > 0 && <span className="auto-status">{valorPorExtenso(lerValor(valorEntrada))}</span>}
-                </Field>
+                <>
+                  <Field label="Forma de pagamento">
+                    <select value={aVista ? 'avista' : 'parcelado'} onChange={e => setAVista(e.target.value === 'avista')}>
+                      <option value="parcelado">A prazo (entrada + até 60x sem juros)</option>
+                      <option value="avista">À vista</option>
+                    </select>
+                    {aVista && sim && <span className="auto-status">Total à vista: {valorPorExtenso(sim.total)}</span>}
+                  </Field>
+                  {!aVista && (
+                    <>
+                      <Field label="Valor da entrada (R$)">
+                        <input required inputMode="decimal" placeholder="Ex.: 18.000,00" value={simEntrada} onChange={e => setSimEntrada(e.target.value)} />
+                      </Field>
+                      <Field label="Nº de parcelas (até 60)">
+                        <input required type="number" min={1} max={60} value={simParcelas} onChange={e => setSimParcelas(e.target.value)} />
+                        {sim && <span className="auto-status">{nParcelas}x de {valorPorExtenso(sim.parcela)}</span>}
+                      </Field>
+                    </>
+                  )}
+                </>
               )}
 
               <Field label="Intermediação">
