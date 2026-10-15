@@ -72,10 +72,10 @@ export default function FormularioReserva({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [pdfMsg, setPdfMsg] = useState('');
-  const [secondary, setSecondary] = useState(false);
   const { perfil } = useAuth();
   // Já vem preenchido com a conta logada; o usuário pode trocar.
   const [vinculo] = useState(() => vinculoDoUsuario(perfil));
+  const [secondary, setSecondary] = useState(false);
   const [tipo, setTipo] = useState('');
   const [valorEntrada, setValorEntrada] = useState('');
   const [inicioReservas, setInicioReservas] = useState('');
@@ -178,6 +178,9 @@ export default function FormularioReserva({
   // Editável; se a pessoa mexer, vale o texto dela. Depois virá do Simulador de Vendas.
   const [editado, setEditado] = useState({ preco: false, corretagem: false });
   const temIntermediacao = form.intermediacao === INTERMEDIACAO_PARCEIRO;
+  // Comprador casado: dados do cônjuge obrigatórios.
+  const conjugeObrigatorio = /casad/i.test(form.estadoCivil || '');
+  useEffect(() => { if (conjugeObrigatorio) setSecondary(true); }, [conjugeObrigatorio]);
   // Simulação igual à do Simulador de Vendas (preço da tabela do Simulador, sem juros).
   const parceiros = useParceiros();
   const [aVista, setAVista] = useState(false);
@@ -748,12 +751,13 @@ export default function FormularioReserva({
           <div className="form-section">
 
             <div className="section-row">
-              <h3>Dados do cônjuge ou segundo comprador</h3>
+              <h3>{conjugeObrigatorio ? 'Dados do cônjuge (obrigatório para comprador casado)' : 'Dados do cônjuge ou segundo comprador'}</h3>
 
               <label className="switch">
                 <input
                   type="checkbox"
-                  checked={secondary}
+                  disabled={conjugeObrigatorio}
+                  checked={secondary || conjugeObrigatorio}
                   onChange={e =>
                     setSecondary(e.target.checked)
                   }
@@ -767,6 +771,7 @@ export default function FormularioReserva({
 
                 <Field label="Nome completo">
                   <input
+                    required={conjugeObrigatorio}
                     value={form.nomeSecundario}
                     onChange={e =>
                       setField(
@@ -825,6 +830,7 @@ export default function FormularioReserva({
 
                 <Field label="CPF">
                   <input
+                    required={conjugeObrigatorio}
                     value={form.cpfSecundario}
                     onChange={e =>
                       setField(
