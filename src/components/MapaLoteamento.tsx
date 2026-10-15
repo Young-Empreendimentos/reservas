@@ -191,6 +191,17 @@ export default function MapaLoteamento() {
               ) : (
                 <div className="notice">Este lote está reservado e não pode receber uma nova reserva.</div>
               )}
+
+              {/* Venda: reservar primeiro, depois gerar o contrato no Simulador de Vendas */}
+              <a
+                className="secondary-button"
+                href={`https://simulador.youngempreendimentos.com.br/?empreendimento=${encodeURIComponent('Erico Verissimo')}&lote=${encodeURIComponent(selected.numero)}`}
+                target="_blank"
+                rel="noreferrer"
+                style={{ textAlign: 'center', textDecoration: 'none', display: 'block' }}
+              >
+                Abrir no Simulador de Vendas
+              </a>
             </div>
           </div>
         </div>
