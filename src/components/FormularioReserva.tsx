@@ -71,6 +71,7 @@ export default function FormularioReserva({
 }) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [pdfMsg, setPdfMsg] = useState('');
   const [secondary, setSecondary] = useState(false);
   const { perfil } = useAuth();
   // Já vem preenchido com a conta logada; o usuário pode trocar.
@@ -261,6 +262,12 @@ export default function FormularioReserva({
   }
 
   async function gerarPDF() {
+    setError('');
+    const faltam = [
+      [form.nome, 'nome do comprador'], [form.cpf, 'CPF'], [form.rgCnh, 'RG/CNH'], [form.endereco, 'endereço'],
+      [precoCondicoes, 'Preço e Condições (preencha Entrada e Nº de parcelas)'], [corretagem, 'Corretagem'],
+    ].filter(([v]) => !String(v || '').trim()).map(([, n]) => n);
+    if (faltam.length) { setError(`Para gerar o PDF, preencha: ${faltam.join(', ')}.`); return; }
     try {
       // Qualificação do Outorgante fica no banco (dado pessoal, fora do código).
       const { data: cfg, error: errCfg } = await db
@@ -279,10 +286,12 @@ export default function FormularioReserva({
       document.body.appendChild(link);
       link.click();
       link.remove();
-      URL.revokeObjectURL(url);
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
+      setError('');
+      setPdfMsg(`PDF gerado: termo-outorga-lote-${lote.numero}.pdf (veja seus downloads).`);
     } catch (error) {
       console.error('Erro ao gerar PDF:', error);
-      setError('Não foi possível gerar o PDF.');
+      setError(`Não foi possível gerar o PDF: ${mensagemErro(error)}`);
     }
   }
 
@@ -1309,6 +1318,8 @@ export default function FormularioReserva({
 
             </div>
           </div>
+
+          {pdfMsg && !error && <p className="field-hint">{pdfMsg}</p>}
 
           {error && (
             <div className="form-error">
