@@ -200,8 +200,8 @@ export default function FormularioReserva({
   const corretorFinal: Corretor | null = temIntermediacao && form.responsavelReserva
     ? { nome: corretor?.nome || form.responsavelReserva, ...Object.fromEntries(Object.entries(corretor || {}).filter(([, v]) => v)), ...Object.fromEntries(Object.entries(corretorManual).filter(([, v]) => v)) }
     : null;
-  const autoCorretagem = temIntermediacao && lote.preco
-    ? textoCorretagem(Number(lote.preco) * 0.05, corretorFinal, form.responsavelReserva)
+  const autoCorretagem = temIntermediacao
+    ? textoCorretagem(lote.preco ? Number(lote.preco) * 0.05 : 0, corretorFinal, form.responsavelReserva)
     : sugestaoCorretagem(temIntermediacao, form.responsavelReserva, lote.preco);
   const precoCondicoes = editado.preco ? form.precoCondicoes : autoPreco;
   const corretagem = editado.corretagem ? form.valorCorretagemBeneficiario : autoCorretagem;
@@ -1205,7 +1205,7 @@ export default function FormularioReserva({
                     {faltandoCorretor.map(([k, rot]) => (
                       <label className="field" key={k}>
                         <span className="field-label">{rot}</span>
-                        <input value={corretorManual[k] ?? ''} onChange={e => setCorretorManual(p => ({ ...p, [k]: e.target.value }))} />
+                        <input value={corretorManual[k] ?? ''} onChange={e => { setCorretorManual(p => ({ ...p, [k]: e.target.value })); setEditado(prev => ({ ...prev, corretagem: false })); }} />
                       </label>
                     ))}
                   </div>

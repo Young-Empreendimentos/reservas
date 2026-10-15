@@ -34,9 +34,19 @@ export function textoPrecoCondicoes(s: Simulacao, entrada: number, parcelas: num
 export type Corretor = { nome?: string; cpf?: string; cnpj?: string; creci?: string; endereco?: string; bairro?: string; cidade?: string; uf?: string; cep?: string; telefone?: string; email?: string };
 
 export function textoCorretagem(honorarios: number, c: Corretor | null, nomeResponsavel: string): string {
-  if (!(honorarios > 0)) return SEM_INTERMEDIACAO;
-  if (!c) return `${valorPorExtenso(honorarios)} em favor de ${nomeResponsavel}.`;
+  if (!c) return SEM_INTERMEDIACAO;
+  const valor = honorarios > 0 ? valorPorExtenso(honorarios) : '5% do preço de tabela';
   const faltam = [['CPF/CNPJ', c.cpf || c.cnpj], ['CRECI', c.creci], ['endereço', c.endereco]].filter(([, v]) => !v).map(([k]) => k);
   const aviso = faltam.length ? ` [Completar: ${faltam.join(', ')}]` : '';
-  return `${valorPorExtenso(honorarios)} em favor de ${c.nome ?? ''}, inscrito no CPF/CNPJ sob o nº ${c.cpf || c.cnpj || ''}, CRECI ${c.creci ?? ''}, com endereço na ${c.endereco ?? ''}, ${c.bairro ?? ''}, ${c.cidade ?? ''}/${c.uf ?? ''}, CEP ${c.cep ?? ''}, fone ${c.telefone ?? ''}, e-mail ${c.email ?? ''}.${aviso}`;
+  const local = [c.endereco, c.bairro, c.cidade && c.uf ? `${c.cidade}/${c.uf}` : c.cidade].filter(Boolean).join(', ');
+  const partes = [
+    `${valor} em favor de ${c.nome || nomeResponsavel}`,
+    (c.cpf || c.cnpj) && `inscrito no CPF/CNPJ sob o nº ${c.cpf || c.cnpj}`,
+    c.creci && `CRECI ${c.creci}`,
+    local && `com endereço na ${local}`,
+    c.cep && `CEP ${c.cep}`,
+    c.telefone && `fone ${c.telefone}`,
+    c.email && `e-mail ${c.email}`,
+  ].filter(Boolean);
+  return `${partes.join(', ')}.${aviso}`;
 }
