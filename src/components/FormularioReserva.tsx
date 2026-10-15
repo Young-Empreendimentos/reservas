@@ -191,8 +191,17 @@ export default function FormularioReserva({
   const entradaSim = lerValor(simEntrada);
   const sim = lote.preco ? simular(Number(lote.preco), entradaSim, nParcelas, temIntermediacao) : null;
   const autoPreco = sim ? textoPrecoCondicoes(sim, entradaSim, nParcelas) : sugestaoPrecoCondicoes(lote.preco, form.formaPagamento);
+  // Como no gerador de contratos: o que faltar no cadastro do corretor é preenchido à mão (só nesta reserva).
+  const CAMPOS_CORRETOR: [keyof Corretor, string][] = [['cpf', 'CPF/CNPJ do corretor'], ['creci', 'CRECI'], ['endereco', 'Endereço'], ['bairro', 'Bairro'], ['cidade', 'Cidade'], ['uf', 'UF'], ['cep', 'CEP'], ['telefone', 'Telefone'], ['email', 'E-mail']];
+  const [corretorManual, setCorretorManual] = useState<Partial<Corretor>>({});
+  const faltandoCorretor = temIntermediacao && form.responsavelReserva
+    ? CAMPOS_CORRETOR.filter(([k]) => !(k === 'cpf' ? (corretor?.cpf || corretor?.cnpj) : corretor?.[k]))
+    : [];
+  const corretorFinal: Corretor | null = temIntermediacao && form.responsavelReserva
+    ? { nome: corretor?.nome || form.responsavelReserva, ...Object.fromEntries(Object.entries(corretor || {}).filter(([, v]) => v)), ...Object.fromEntries(Object.entries(corretorManual).filter(([, v]) => v)) }
+    : null;
   const autoCorretagem = temIntermediacao && lote.preco
-    ? textoCorretagem(Number(lote.preco) * 0.05, corretor, form.responsavelReserva)
+    ? textoCorretagem(Number(lote.preco) * 0.05, corretorFinal, form.responsavelReserva)
     : sugestaoCorretagem(temIntermediacao, form.responsavelReserva, lote.preco);
   const precoCondicoes = editado.preco ? form.precoCondicoes : autoPreco;
   const corretagem = editado.corretagem ? form.valorCorretagemBeneficiario : autoCorretagem;
@@ -1188,6 +1197,20 @@ export default function FormularioReserva({
                   onRestaurar={() => setEditado(prev => ({ ...prev, preco: false }))}
                 />
               </Field>
+
+              {faltandoCorretor.length > 0 && (
+                <div className="field full">
+                  <span className="field-label">Dados do corretor que faltam no cadastro do Simulador (preencha para esta reserva)</span>
+                  <div className="form-grid">
+                    {faltandoCorretor.map(([k, rot]) => (
+                      <label className="field" key={k}>
+                        <span className="field-label">{rot}</span>
+                        <input value={corretorManual[k] ?? ''} onChange={e => setCorretorManual(p => ({ ...p, [k]: e.target.value }))} />
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               <Field
                 label="Valor da Corretagem e beneficiário"

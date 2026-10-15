@@ -35,8 +35,8 @@ export type Corretor = { nome?: string; cpf?: string; cnpj?: string; creci?: str
 
 export function textoCorretagem(honorarios: number, c: Corretor | null, nomeResponsavel: string): string {
   if (!(honorarios > 0)) return SEM_INTERMEDIACAO;
-  if (!c) return `${valorPorExtenso(honorarios)} em favor de ${nomeResponsavel} (cadastro do corretor não encontrado no Simulador; completar CPF/CNPJ, CRECI e endereço).`;
+  if (!c) return `${valorPorExtenso(honorarios)} em favor de ${nomeResponsavel}.`;
   const faltam = [['CPF/CNPJ', c.cpf || c.cnpj], ['CRECI', c.creci], ['endereço', c.endereco]].filter(([, v]) => !v).map(([k]) => k);
-  const aviso = faltam.length ? ` [Completar: ${faltam.join(', ')} — não estão no cadastro do Simulador]` : '';
+  const aviso = faltam.length ? ` [Completar: ${faltam.join(', ')}]` : '';
   return `${valorPorExtenso(honorarios)} em favor de ${c.nome ?? ''}, inscrito no CPF/CNPJ sob o nº ${c.cpf || c.cnpj || ''}, CRECI ${c.creci ?? ''}, com endereço na ${c.endereco ?? ''}, ${c.bairro ?? ''}, ${c.cidade ?? ''}/${c.uf ?? ''}, CEP ${c.cep ?? ''}, fone ${c.telefone ?? ''}, e-mail ${c.email ?? ''}.${aviso}`;
 }
