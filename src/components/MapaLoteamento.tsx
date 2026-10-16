@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import FormularioReserva from './FormularioReserva';
 import { lotes as lotesBase, type Lote } from '@/src/data/lotes';
 import { db, mensagemErro, type LoteDb } from '@/src/lib/supabase';
+import { useAuth } from '@/src/lib/auth';
 
 function formatMoney(value?: number | null) {
   if (value === undefined || value === null) return 'Preço não cadastrado';
@@ -38,6 +39,9 @@ export default function MapaLoteamento() {
   const [online, setOnline] = useState(false);
   const [lastUpdate, setLastUpdate] = useState<string | null>(null);
   const [reserving, setReserving] = useState<Lote | null>(null);
+  // Simulador de Vendas é só da equipe Young (admins e e-mails @youngempreendimentos.com.br); corretores externos não usam.
+  const { admin, perfil } = useAuth();
+  const verSimulador = admin || /@youngempreendimentos\.com\.br$/i.test(perfil?.email || '');
 
   async function carregarLotes() {
     try {
@@ -196,7 +200,7 @@ export default function MapaLoteamento() {
               )}
 
               {/* Venda: reservar primeiro, depois gerar o contrato no Simulador de Vendas */}
-              <a
+              {verSimulador && <a
                 className="secondary-button"
                 href={`https://simulador.youngempreendimentos.com.br/?empreendimento=${encodeURIComponent('Erico Verissimo 2')}&lote=${encodeURIComponent(selected.numero)}`}
                 target="_blank"
@@ -204,7 +208,7 @@ export default function MapaLoteamento() {
                 style={{ textAlign: 'center', textDecoration: 'none', display: 'block' }}
               >
                 Abrir no Simulador de Vendas
-              </a>
+              </a>}
             </div>
           </div>
         </div>
