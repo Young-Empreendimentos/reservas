@@ -5,6 +5,8 @@ import MapaLoteamento from '@/src/components/MapaLoteamento';
 import ReservasPainel from '@/src/components/ReservasPainel';
 import UsuariosPainel from '@/src/components/UsuariosPainel';
 import { AuthProvider, useAuth } from '@/src/lib/auth';
+import BotaoGoogle from '@/src/components/BotaoGoogle';
+import { GOOGLE_CLIENT_ID_RESERVAS } from '@/src/lib/supabase';
 
 type Aba = 'mapa' | 'reservas' | 'usuarios';
 
@@ -62,7 +64,7 @@ function App() {
       {estado === 'deslogado' && (
         <Aviso titulo="Reservas — Bairro Erico Verissimo · Fase 2">
           <p>Entre com sua conta Google para acessar o mapa e as reservas.</p>
-          <button className="primary-button compacto" onClick={entrar}>Entrar com Google</button>
+          {GOOGLE_CLIENT_ID_RESERVAS ? <BotaoGoogle /> : <button className="primary-button compacto" onClick={entrar}>Entrar com Google</button>}
         </Aviso>
       )}
 
