@@ -18,9 +18,6 @@ const SSO_COOKIE_OPTIONS = {
 export const SUPABASE_URL = 'https://vvtympzatclvjaqucebr.supabase.co';
 export const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_VRzI66cuw15hnqnoPKe27A_UmUbuhPC';
 
-// Cliente OAuth próprio do Reservas (projeto Google Cloud separado, Externo). Vazio = usa o login Young.
-export const GOOGLE_CLIENT_ID_RESERVAS = '1042219060275-ooh22uebgro17vm67otbh9950n7lk06s.apps.googleusercontent.com';
-
 export const supabase = createBrowserClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
   cookieOptions: SSO_COOKIE_OPTIONS,
   auth: {

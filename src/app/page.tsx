@@ -5,8 +5,7 @@ import MapaLoteamento from '@/src/components/MapaLoteamento';
 import ReservasPainel from '@/src/components/ReservasPainel';
 import UsuariosPainel from '@/src/components/UsuariosPainel';
 import { AuthProvider, useAuth } from '@/src/lib/auth';
-import BotaoGoogle from '@/src/components/BotaoGoogle';
-import { GOOGLE_CLIENT_ID_RESERVAS } from '@/src/lib/supabase';
+import LoginEmail, { NovaSenha } from '@/src/components/LoginEmail';
 
 type Aba = 'mapa' | 'reservas' | 'usuarios';
 
@@ -19,7 +18,7 @@ export default function Home() {
 }
 
 function App() {
-  const { estado, perfil, admin, erro, entrar, sair, recarregar } = useAuth();
+  const { estado, perfil, admin, erro, recuperandoSenha, fimRecuperacao, sair, recarregar } = useAuth();
   const [aba, setAba] = useState<Aba>('mapa');
 
   useEffect(() => {
@@ -61,14 +60,20 @@ function App() {
 
       {estado === 'carregando' && <Aviso titulo="Carregando..." />}
 
-      {estado === 'deslogado' && (
-        <Aviso titulo="Reservas — Bairro Erico Verissimo · Fase 2">
-          <p>Entre com sua conta Google para acessar o mapa e as reservas.</p>
-          {GOOGLE_CLIENT_ID_RESERVAS ? <BotaoGoogle /> : <button className="primary-button compacto" onClick={entrar}>Entrar com Google</button>}
+      {recuperandoSenha && estado !== 'carregando' && estado !== 'deslogado' && (
+        <Aviso titulo="Defina sua nova senha">
+          <NovaSenha onPronto={fimRecuperacao} />
         </Aviso>
       )}
 
-      {estado === 'pendente' && (
+      {estado === 'deslogado' && (
+        <Aviso titulo="Reservas — Bairro Erico Verissimo · Fase 2">
+          <p>Entre com seu e-mail e senha para acessar o mapa e as reservas. Primeiro acesso? Clique em &quot;Criar conta&quot;.</p>
+          <LoginEmail />
+        </Aviso>
+      )}
+
+      {!recuperandoSenha && estado === 'pendente' && (
         <Aviso titulo="Acesso aguardando liberação">
           <p>
             Recebemos seu pedido de acesso ({perfil?.email}). Um administrador da Young precisa liberar
@@ -78,22 +83,22 @@ function App() {
         </Aviso>
       )}
 
-      {estado === 'recusado' && (
+      {!recuperandoSenha && estado === 'recusado' && (
         <Aviso titulo="Acesso não liberado">
           <p>Seu acesso ({perfil?.email}) não foi liberado. Fale com a equipe da Young.</p>
         </Aviso>
       )}
 
-      {estado === 'erro' && (
+      {!recuperandoSenha && estado === 'erro' && (
         <Aviso titulo="Não foi possível carregar seu acesso">
           <p>{erro}</p>
           <button className="secondary-button" onClick={recarregar}>Tentar novamente</button>
         </Aviso>
       )}
 
-      {estado === 'aprovado' && aba === 'mapa' && <MapaLoteamento />}
-      {estado === 'aprovado' && aba === 'reservas' && <ReservasPainel />}
-      {estado === 'aprovado' && aba === 'usuarios' && admin && <UsuariosPainel />}
+      {!recuperandoSenha && estado === 'aprovado' && aba === 'mapa' && <MapaLoteamento />}
+      {!recuperandoSenha && estado === 'aprovado' && aba === 'reservas' && <ReservasPainel />}
+      {!recuperandoSenha && estado === 'aprovado' && aba === 'usuarios' && admin && <UsuariosPainel />}
     </div>
   );
 }

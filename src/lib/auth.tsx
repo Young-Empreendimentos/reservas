@@ -12,7 +12,8 @@ type Auth = {
   perfil: Perfil | null;
   admin: boolean;
   erro: string;
-  entrar: () => Promise<void>;
+  recuperandoSenha: boolean;
+  fimRecuperacao: () => void;
   sair: () => Promise<void>;
   recarregar: () => Promise<void>;
 };
@@ -24,6 +25,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [perfil, setPerfil] = useState<Perfil | null>(null);
   const [estado, setEstado] = useState<Estado>('carregando');
   const [erro, setErro] = useState('');
+  const [recuperandoSenha, setRecuperandoSenha] = useState(false);
 
   const carregarPerfil = useCallback(async (s: Session | null) => {
     setSession(s);
@@ -47,18 +49,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => carregarPerfil(data.session));
     const { data: sub } = supabase.auth.onAuthStateChange((evento, s) => {
+      if (evento === 'PASSWORD_RECOVERY') setRecuperandoSenha(true);
       if (evento === 'SIGNED_IN' || evento === 'SIGNED_OUT') carregarPerfil(s);
       else setSession(s);
     });
     return () => sub.subscription.unsubscribe();
   }, [carregarPerfil]);
 
-  const entrar = useCallback(async () => {
-    await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: { redirectTo: window.location.origin + window.location.pathname },
-    });
-  }, []);
+  const fimRecuperacao = useCallback(() => setRecuperandoSenha(false), []);
 
   const sair = useCallback(async () => {
     await supabase.auth.signOut({ scope: 'local' });
@@ -72,7 +70,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const admin = estado === 'aprovado' && perfil?.papel === 'admin';
 
   return (
-    <Ctx.Provider value={{ estado, session, perfil, admin, erro, entrar, sair, recarregar }}>
+    <Ctx.Provider value={{ estado, session, perfil, admin, erro, recuperandoSenha, fimRecuperacao, sair, recarregar }}>
       {children}
     </Ctx.Provider>
   );
