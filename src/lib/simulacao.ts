@@ -66,9 +66,9 @@ export function textoAvista(s: Simulacao, pg: Pagamento): string {
 
 export type Corretor = { nome?: string; cpf?: string; cnpj?: string; creci?: string; endereco?: string; bairro?: string; cidade?: string; uf?: string; cep?: string; telefone?: string; email?: string; dados_bancarios?: string };
 
-export function textoCorretagem(honorarios: number, c: Corretor | null, nomeResponsavel: string): string {
+export function textoCorretagem(honorarios: number, c: Corretor | null, nomeResponsavel: string, valorTexto?: string): string {
   if (!c) return SEM_INTERMEDIACAO;
-  const valor = honorarios > 0 ? valorPorExtenso(honorarios) : '5% do preço de tabela';
+  const valor = valorTexto || (honorarios > 0 ? valorPorExtenso(honorarios) : '5% do preço de tabela');
   const faltam = [['CPF/CNPJ', c.cpf || c.cnpj], ['CRECI', c.creci], ['endereço', c.endereco]].filter(([, v]) => !v).map(([k]) => k);
   const aviso = faltam.length ? ` [Completar: ${faltam.join(', ')}]` : '';
   const local = [c.endereco, c.bairro, c.cidade && c.uf ? `${c.cidade}/${c.uf}` : c.cidade].filter(Boolean).join(', ');

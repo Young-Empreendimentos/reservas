@@ -8,6 +8,12 @@ import detalhes from '@/src/data/lotes-detalhes.json';
 export const VALOR_ARRAS = 2000;
 export const VALOR_ARRAS_TEXTO =
   'R$ 2.000,00 (dois mil reais), pagos diretamente à Outorgante, CAY Empreendimentos Imobiliários SPE Ltda., via PIX para a chave CNPJ 46.138.992/0001-19.';
+// Campo 5 do arras de RESERVA: sem preço nem condições, só a forma de pagamento pretendida.
+export const DATA_FORMALIZACAO = '01 de novembro de 2026';
+export function textoFormaPagamentoReserva(aVista: boolean): string {
+  return `${aVista ? 'À vista' : 'A prazo'}. A formalização do Contrato de Compra e Venda, com a definição do preço, das condições de pagamento e dos valores de entrada, ocorrerá em ${DATA_FORMALIZACAO}, ocasião em que o valor pago a título de Arras será abatido do preço do Imóvel, nos termos da Cláusula Quarta deste instrumento.`;
+}
+export const HONORARIOS_A_DEFINIR = `Honorários de intermediação imobiliária a serem definidos na formalização do Contrato de Compra e Venda,`;
 export const SEM_INTERMEDIACAO = 'A presente transação não é objeto de intermediação imobiliária.';
 
 // A qualificação do Outorgante (dados pessoais) fica no banco: marketing.reservas_config,
@@ -317,7 +323,7 @@ export async function gerarArrasPdf(d: DadosArras): Promise<Uint8Array> {
     ['2. Imóvel objeto:', d.imovelObjeto],
     ['3. Outorgado:', d.outorgados.join('\n')],
     ['4. Valor do Arras:', d.valorArras],
-    ['5. Preço e Condições:', d.precoCondicoes],
+    ['5. Forma de Pagamento:', d.precoCondicoes],
     ['6. Valor da Corretagem e beneficiário:', d.corretagem],
     ['7. Consequências da rescisão contratual:', 'Perda do valor pago a título de Arras, em função do inadimplemento.'],
     ['8. Arrependimento:', 'Este contrato é pactuado e assinado pelas partes na sede da Outorgante, no endereço indicado no Campo 1, não aplicando-se portanto o previsto no art. 49 da lei nº 8.078/90.'],

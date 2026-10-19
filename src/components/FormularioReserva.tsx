@@ -6,8 +6,11 @@ import {
   gerarArrasPdf,
   imovelObjeto,
   qualificar,
+  DATA_FORMALIZACAO,
+  HONORARIOS_A_DEFINIR,
   sugestaoCorretagem,
   sugestaoPrecoCondicoes,
+  textoFormaPagamentoReserva,
   VALOR_ARRAS_TEXTO,
   valorPorExtenso
 } from '@/src/lib/arras';
@@ -199,7 +202,7 @@ export default function FormularioReserva({
       .then(({ data }) => { if (vivo) setCorretor((data as Corretor) || null); });
     return () => { vivo = false; };
   }, [temIntermediacao, form.responsavelReserva]);
-  const maxParcelas = preVenda ? 60 : 180;
+  const maxParcelas = 60;
   const nParcelas = Math.min(maxParcelas, Math.max(0, Math.floor(Number(simParcelas) || 0)));
   const entradaSim = lerValor(simEntrada);
   const sim = !lote.preco ? null : aVista ? simularAvista(Number(lote.preco), temIntermediacao) : simular(Number(lote.preco), entradaSim, nParcelas, temIntermediacao);
@@ -213,11 +216,14 @@ export default function FormularioReserva({
     ? { nome: corretor?.nome || form.responsavelReserva, ...Object.fromEntries(Object.entries(corretor || {}).filter(([, v]) => v)), ...Object.fromEntries(Object.entries(corretorManual).filter(([, v]) => v)) }
     : null;
   const autoCorretagem = temIntermediacao
-    ? textoCorretagem(lote.preco ? Number(lote.preco) * 0.05 : 0, corretorFinal, form.responsavelReserva)
+    ? (preVenda
+        ? textoCorretagem(lote.preco ? Number(lote.preco) * 0.05 : 0, corretorFinal, form.responsavelReserva)
+        : textoCorretagem(0, corretorFinal, form.responsavelReserva, HONORARIOS_A_DEFINIR)) // reserva: sem valores
     : sugestaoCorretagem(temIntermediacao, form.responsavelReserva, lote.preco);
   const pagamento: Pagamento = { dataEntrada, dataPrimeira, bancoEmpresa, bancoCorretor: String(corretorFinal?.dados_bancarios || '') };
   const autoPreco = sim ? (aVista ? textoAvista(sim, pagamento) : textoPrecoCondicoes(sim, entradaSim, nParcelas, pagamento)) : sugestaoPrecoCondicoes(lote.preco, form.formaPagamento);
-  const precoCondicoes = editado.preco ? form.precoCondicoes : autoPreco;
+  // Reserva (arras): sem preço/condições — só a forma de pagamento e a data de formalização.
+  const precoCondicoes = !preVenda ? textoFormaPagamentoReserva(aVista) : editado.preco ? form.precoCondicoes : autoPreco;
   const corretagem = editado.corretagem ? form.valorCorretagemBeneficiario : autoCorretagem;
 
   function editarCampo(campo: 'preco' | 'corretagem', key: string, value: string) {
@@ -284,7 +290,7 @@ export default function FormularioReserva({
     setError('');
     const faltam = [
       [form.nome, 'nome do comprador'], [form.cpf, 'CPF'], [form.rgCnh, 'RG/CNH'], [form.endereco, 'endereço'],
-      [precoCondicoes, 'Preço e Condições (preencha Entrada e Nº de parcelas)'], [corretagem, 'Corretagem'],
+      [precoCondicoes, 'Forma de pagamento'], [corretagem, 'Corretagem'],
     ].filter(([v]) => !String(v || '').trim()).map(([, n]) => n);
     if (faltam.length) { setError(`Para gerar o PDF, preencha: ${faltam.join(', ')}.`); return; }
     try {
@@ -1234,45 +1240,14 @@ export default function FormularioReserva({
 
               <Field label="Forma de pagamento">
                 <select value={aVista ? 'avista' : 'parcelado'} onChange={e => setAVista(e.target.value === 'avista')}>
-                  <option value="parcelado">Entrada + parcelas</option>
+                  <option value="parcelado">A prazo</option>
                   <option value="avista">À vista</option>
                 </select>
-                {aVista && sim && <span className="auto-status">Total à vista: {valorPorExtenso(sim.total)}</span>}
               </Field>
-              <Field label={aVista ? 'Data do pagamento' : 'Data da entrada'}>
-                <input type="date" value={dataEntrada} onChange={e => setDataEntrada(e.target.value)} />
-              </Field>
-              {!aVista && (
-                <Field label="Vencimento da 1ª parcela">
-                  <input type="date" value={dataPrimeira} onChange={e => setDataPrimeira(e.target.value)} />
-                </Field>
-              )}
-              {!aVista && (
-                <>
-                  <Field label="Entrada (R$)">
-                    <input inputMode="decimal" placeholder="Ex.: 10.000,00" value={simEntrada} onChange={e => setSimEntrada(e.target.value)} />
-                  </Field>
-                  <Field label={`Nº de parcelas (até ${maxParcelas})`}>
-                    <input type="number" min={1} max={maxParcelas} value={simParcelas} onChange={e => setSimParcelas(e.target.value)} />
-                    {sim && <span className="auto-status">{nParcelas}x de {valorPorExtenso(sim.parcela)}</span>}
-                  </Field>
-                </>
-              )}
 
-              <Field label="Preço e Condições" full>
-                <textarea
-                  required
-                  rows={2}
-                  value={precoCondicoes}
-                  onChange={e =>
-                    editarCampo('preco', 'precoCondicoes', e.target.value)
-                  }
-                  placeholder="Ex.: Preço total de R$ 180.000,00 (cento e oitenta mil reais), sendo entrada de R$ 18.000,00 e saldo em 120 parcelas mensais de R$ 1.350,00"
-                />
-                <AutoStatus
-                  editado={editado.preco}
-                  onRestaurar={() => setEditado(prev => ({ ...prev, preco: false }))}
-                />
+              <Field label="Campo 5 do arras (Forma de Pagamento)" full>
+                <textarea readOnly rows={3} value={precoCondicoes} />
+                <span className="field-hint">Preço e condições não aparecem no arras: são definidos na formalização do contrato em {DATA_FORMALIZACAO}.</span>
               </Field>
 
               {faltandoCorretor.length > 0 && (
@@ -1311,10 +1286,8 @@ export default function FormularioReserva({
             </div>
 
             <p className="field-hint">
-              O Outorgado é preenchido com os dados do comprador acima. Preço e corretagem são
-              sugeridos com os dados disponíveis (preço do lote, forma de pagamento, intermediação
-              e responsável; corretagem de 5% como no Simulador) e podem ser editados. Depois virão
-              do Simulador de Vendas.
+              O Outorgado é preenchido com os dados do comprador acima. O arras de reserva não traz preço,
+              condições nem valor de honorários: tudo é definido na formalização do contrato em {DATA_FORMALIZACAO}.
             </p>
           </div>
           )}
