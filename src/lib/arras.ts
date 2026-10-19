@@ -9,7 +9,7 @@ export const VALOR_ARRAS = 2000;
 export const VALOR_ARRAS_TEXTO =
   'R$ 2.000,00 (dois mil reais), pagos diretamente à Outorgante, CAY Empreendimentos Imobiliários SPE Ltda., via PIX para a chave CNPJ 46.138.992/0001-19.';
 // Campo 5 do arras de RESERVA: sem preço nem condições, só a forma de pagamento pretendida.
-export const DATA_FORMALIZACAO = '01 de novembro de 2026';
+export const DATA_FORMALIZACAO = '15 de novembro de 2026';
 export function textoFormaPagamentoReserva(aVista: boolean): string {
   return `${aVista ? 'À vista' : 'A prazo'}. A formalização do Contrato de Compra e Venda, com a definição do preço, das condições de pagamento e dos valores de entrada, ocorrerá em ${DATA_FORMALIZACAO}, ocasião em que o valor pago a título de Arras será abatido do preço do Imóvel, nos termos da Cláusula Quarta deste instrumento.`;
 }
