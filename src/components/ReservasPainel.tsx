@@ -369,6 +369,17 @@ function Detalhe({ reserva, onClose, onAtualizado }: { reserva: Reserva; onClose
   const [rascunho, setRascunho] = useState<Record<string, string>>({});
   const [salvando, setSalvando] = useState(false);
   const [historico, setHistorico] = useState<Historico[]>([]);
+  const [reenviando, setReenviando] = useState(false);
+
+  // Reenvia o e-mail desta reserva para todos os admins (marketing.reservas_reenviar_email).
+  async function reenviarEmail() {
+    if (!confirm(`Reenviar o e-mail da reserva do lote ${atual.lote} para todos os administradores?`)) return;
+    setReenviando(true);
+    setMsg('');
+    const { error } = await db.rpc('reservas_reenviar_email', { p_id: atual.id });
+    setReenviando(false);
+    setMsg(error ? `Erro ao reenviar: ${mensagemErro(error)}` : 'E-mail reenviado para os administradores.');
+  }
 
   // Histórico: só admin (a política do banco também bloqueia os demais).
   const carregarHistorico = useCallback(async () => {
@@ -448,6 +459,7 @@ function Detalhe({ reserva, onClose, onAtualizado }: { reserva: Reserva; onClose
             <h2 className="modal-title">Lote {atual.lote} · {atual.nome}</h2>
           </div>
           <div className="acoes">
+            {admin && !editando && <button className="secondary-button" onClick={reenviarEmail} disabled={reenviando} type="button">{reenviando ? 'Reenviando...' : 'Reenviar e-mail'}</button>}
             {admin && !editando && <button className="secondary-button" onClick={comecarEdicao} type="button">Editar</button>}
             <button className="close" onClick={onClose} type="button">×</button>
           </div>
